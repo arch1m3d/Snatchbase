@@ -7,12 +7,14 @@ import {
   Database, 
   Menu, 
   X,
-  Shield
+  Shield,
+  Server
 } from 'lucide-react'
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: Database },
   { name: 'Search', href: '/search', icon: Search },
+  { name: 'Devices', href: '/devices', icon: Server },
   { name: 'Analytics', href: '/analytics', icon: BarChart3 },
   { name: 'API', href: '/api', icon: Shield },
 ]

@@ -4,19 +4,18 @@ from typing import Optional, List
 from datetime import datetime
 
 class CredentialBase(BaseModel):
-    software: Optional[str] = None
-    host: Optional[str] = None
+    url: Optional[str] = None
+    domain: Optional[str] = None
+    tld: Optional[str] = None
     username: Optional[str] = None
     password: Optional[str] = None
-    domain: Optional[str] = None
-    local_part: Optional[str] = None
-    email_domain: Optional[str] = None
-    filepath: Optional[str] = None
+    browser: Optional[str] = None
     stealer_name: Optional[str] = None
+    file_path: Optional[str] = None
 
 class CredentialResponse(CredentialBase):
     id: int
-    upload_id: str
+    device_id: str
     created_at: datetime
     
     class Config:

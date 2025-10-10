@@ -2,7 +2,7 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import func, or_, and_, desc
 from typing import List, Optional
-from app.models import Credential, System, Upload
+from app.models import Credential, System, Upload, Device, Software, PasswordStat
 from app.schemas import CredentialResponse, SystemResponse, StatisticsResponse, DomainStatistic, CountryStatistic, StealerStatistic
 
 class SearchService:
@@ -14,12 +14,12 @@ class SearchService:
         query: Optional[str] = None,
         domain: Optional[str] = None,
         username: Optional[str] = None,
-        software: Optional[str] = None,
-        stealer_name: Optional[str] = None,
+        browser: Optional[str] = None,
+        tld: Optional[str] = None,
         limit: int = 100,
         offset: int = 0
     ) -> List[CredentialResponse]:
-        """Search credentials with filters"""
+        """Search credentials with filters (enhanced with browser and TLD)"""
         
         # Start with base query
         query_obj = db.query(Credential)
@@ -32,29 +32,22 @@ class SearchService:
             search_filter = or_(
                 Credential.username.ilike(f"%{query}%"),
                 Credential.domain.ilike(f"%{query}%"),
-                Credential.host.ilike(f"%{query}%"),
-                Credential.software.ilike(f"%{query}%"),
-                Credential.email_domain.ilike(f"%{query}%")
+                Credential.url.ilike(f"%{query}%"),
+                Credential.browser.ilike(f"%{query}%")
             )
             filters.append(search_filter)
         
         if domain:
-            filters.append(or_(
-                Credential.domain.ilike(f"%{domain}%"),
-                Credential.email_domain.ilike(f"%{domain}%")
-            ))
+            filters.append(Credential.domain.ilike(f"%{domain}%"))
         
         if username:
-            filters.append(or_(
-                Credential.username.ilike(f"%{username}%"),
-                Credential.local_part.ilike(f"%{username}%")
-            ))
+            filters.append(Credential.username.ilike(f"%{username}%"))
         
-        if software:
-            filters.append(Credential.software.ilike(f"%{software}%"))
+        if browser:
+            filters.append(Credential.browser.ilike(f"%{browser}%"))
         
-        if stealer_name:
-            filters.append(Credential.stealer_name.ilike(f"%{stealer_name}%"))
+        if tld:
+            filters.append(Credential.tld.ilike(f"%{tld}%"))
         
         # Apply all filters
         if filters:
@@ -74,7 +67,8 @@ class SearchService:
         query: Optional[str] = None,
         domain: Optional[str] = None,
         username: Optional[str] = None,
-        software: Optional[str] = None,
+        browser: Optional[str] = None,
+        tld: Optional[str] = None,
         stealer_name: Optional[str] = None,
         limit: int = 100,
         offset: int = 0
@@ -92,26 +86,22 @@ class SearchService:
             search_filter = or_(
                 Credential.username.ilike(f"%{query}%"),
                 Credential.domain.ilike(f"%{query}%"),
-                Credential.host.ilike(f"%{query}%"),
-                Credential.software.ilike(f"%{query}%"),
-                Credential.email_domain.ilike(f"%{query}%")
+                Credential.url.ilike(f"%{query}%"),
+                Credential.browser.ilike(f"%{query}%")
             )
             filters.append(search_filter)
         
         if domain:
-            filters.append(or_(
-                Credential.domain.ilike(f"%{domain}%"),
-                Credential.email_domain.ilike(f"%{domain}%")
-            ))
+            filters.append(Credential.domain.ilike(f"%{domain}%"))
         
         if username:
-            filters.append(or_(
-                Credential.username.ilike(f"%{username}%"),
-                Credential.local_part.ilike(f"%{username}%")
-            ))
+            filters.append(Credential.username.ilike(f"%{username}%"))
         
-        if software:
-            filters.append(Credential.software.ilike(f"%{software}%"))
+        if browser:
+            filters.append(Credential.browser.ilike(f"%{browser}%"))
+        
+        if tld:
+            filters.append(Credential.tld.ilike(f"%{tld}%"))
         
         if stealer_name:
             filters.append(Credential.stealer_name.ilike(f"%{stealer_name}%"))
@@ -232,11 +222,11 @@ class SearchService:
         """Get overall database statistics"""
         
         total_credentials = db.query(func.count(Credential.id)).scalar()
-        total_systems = db.query(func.count(System.id)).scalar()
+        total_systems = db.query(func.count(Device.id)).scalar()  # Changed from System to Device
         total_uploads = db.query(func.count(Upload.id)).scalar()
         
         unique_domains = db.query(func.count(func.distinct(Credential.domain))).scalar()
-        unique_countries = db.query(func.count(func.distinct(System.country))).scalar()
+        unique_countries = db.query(func.count(func.distinct(System.country))).scalar() if db.query(System).first() else 0
         unique_stealers = db.query(func.count(func.distinct(Credential.stealer_name))).scalar()
         
         return StatisticsResponse(
@@ -298,3 +288,94 @@ class SearchService:
         ).limit(limit).all()
         
         return [StealerStatistic(stealer_name=stealer_name, count=count) for stealer_name, count in results]
+    
+    # New methods for Device model
+    
+    def search_devices(
+        self,
+        db: Session,
+        query: Optional[str] = None,
+        limit: int = 100,
+        offset: int = 0
+    ) -> tuple[List[Device], int]:
+        """Search devices with filters - exclude devices with no credentials and no domains"""
+        base_query = db.query(Device)
+        
+        # Filter out devices with 0 credentials AND 0 domains
+        base_query = base_query.filter(
+            or_(
+                Device.total_credentials > 0,
+                Device.total_domains > 0
+            )
+        )
+        
+        if query:
+            search_filter = Device.device_name.ilike(f"%{query}%")
+            base_query = base_query.filter(search_filter)
+        
+        total = base_query.count()
+        devices = base_query.order_by(desc(Device.created_at)).offset(offset).limit(limit).all()
+        
+        return devices, total
+    
+    def get_device_by_id(self, db: Session, device_id: str) -> Optional[Device]:
+        """Get device by ID"""
+        return db.query(Device).filter(Device.device_id == device_id).first()
+    
+    def get_browser_statistics(self, db: Session, limit: int = 20):
+        """Get top browsers by credential count"""
+        results = db.query(
+            Credential.browser,
+            func.count(Credential.id).label('count')
+        ).filter(
+            Credential.browser.isnot(None),
+            Credential.browser != ''
+        ).group_by(
+            Credential.browser
+        ).order_by(
+            desc('count')
+        ).limit(limit).all()
+        
+        return [{"browser": browser, "count": count} for browser, count in results]
+    
+    def get_tld_statistics(self, db: Session, limit: int = 20):
+        """Get top TLDs by credential count"""
+        results = db.query(
+            Credential.tld,
+            func.count(Credential.id).label('count')
+        ).filter(
+            Credential.tld.isnot(None),
+            Credential.tld != ''
+        ).group_by(
+            Credential.tld
+        ).order_by(
+            desc('count')
+        ).limit(limit).all()
+        
+        return [{"tld": tld, "count": count} for tld, count in results]
+    
+    def get_password_statistics(self, db: Session, limit: int = 20):
+        """Get top passwords across all devices"""
+        results = db.query(
+            PasswordStat.password,
+            func.sum(PasswordStat.count).label('total_count')
+        ).group_by(
+            PasswordStat.password
+        ).order_by(
+            desc('total_count')
+        ).limit(limit).all()
+        
+        return [{"password": password, "count": count} for password, count in results]
+    
+    def get_software_statistics(self, db: Session, limit: int = 20):
+        """Get most common software across all devices"""
+        results = db.query(
+            Software.software_name,
+            func.count(func.distinct(Software.device_id)).label('device_count')
+        ).group_by(
+            Software.software_name
+        ).order_by(
+            desc('device_count')
+        ).limit(limit).all()
+        
+        return [{"software_name": name, "device_count": count} for name, count in results]

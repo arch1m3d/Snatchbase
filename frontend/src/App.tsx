@@ -1,9 +1,11 @@
 import { Routes, Route } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import Navbar from './components/Navbar'
-import Dashboard from './pages/Dashboard'
-import SearchSimple from './pages/SearchSimple'
-import Analytics from './pages/Analytics'
+import DashboardSimple from './pages/DashboardSimple'
+import SearchNew from './pages/SearchNew'
+import DevicesPage from './pages/DevicesPage'
+import DeviceDetail from './pages/DeviceDetail'
+import AnalyticsNew from './pages/AnalyticsNew'
 import ApiDocs from './pages/ApiDocs'
 
 function App() {
@@ -41,9 +43,11 @@ function App() {
       
       <main className="relative z-10">
         <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/search" element={<SearchSimple />} />
-          <Route path="/analytics" element={<Analytics />} />
+          <Route path="/" element={<DashboardSimple />} />
+          <Route path="/search" element={<SearchNew />} />
+          <Route path="/devices" element={<DevicesPage />} />
+          <Route path="/device/:deviceId" element={<DeviceDetail />} />
+          <Route path="/analytics" element={<AnalyticsNew />} />
           <Route path="/api" element={<ApiDocs />} />
         </Routes>
       </main>

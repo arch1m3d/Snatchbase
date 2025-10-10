@@ -5,15 +5,13 @@
 snatchbase.db
 
 # Stealer logs and sensitive data
-data/*
 !data/.gitkeep
-temp/
-logs/
-valencigalogs/
 *.zip
 *.rar
 *.7z
 *.tar.gz
+backend/data/incoming/uploads/*
+!backend/data/incoming/uploads/.gitkeep
 
 # Environment variables
 .env

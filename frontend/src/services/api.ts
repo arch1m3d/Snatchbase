@@ -1,25 +1,26 @@
 import axios from 'axios'
 
-const API_BASE_URL = 'http://localhost:8000'
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 const api = axios.create({
   baseURL: API_BASE_URL,
   timeout: 30000,
+  headers: {
+    'Content-Type': 'application/json',
+  },
 })
 
 // Types
 export interface Credential {
   id: number
-  software?: string
-  host?: string
+  url?: string
+  domain?: string
+  tld?: string
   username?: string
   password?: string
-  domain?: string
-  local_part?: string
-  email_domain?: string
-  filepath?: string
-  stealer_name?: string
-  upload_id: string
+  browser?: string
+  file_path?: string
+  device_id?: string
   created_at: string
 }
 
@@ -99,8 +100,8 @@ export const searchCredentials = async (params: {
   q?: string
   domain?: string
   username?: string
-  software?: string
-  stealer_name?: string
+  browser?: string
+  tld?: string
   limit?: number
   offset?: number
 }): Promise<SearchResponse<Credential>> => {
@@ -120,5 +121,61 @@ export const searchSystems = async (params: {
   return response.data
 }
 
+// New Device endpoints
+export interface Device {
+  id: number
+  device_id: string
+  device_name: string
+  hostname?: string
+  upload_batch: string
+  total_files: number
+  total_credentials: number
+  total_domains: number
+  total_urls: number
+  created_at: string
+}
+
+export const fetchDevices = async (params: {
+  q?: string
+  limit?: number
+  offset?: number
+}): Promise<SearchResponse<Device>> => {
+  const response = await api.get('/devices', { params })
+  return response.data
+}
+
+export const fetchDevice = async (deviceId: number): Promise<Device> => {
+  const response = await api.get(`/devices/${deviceId}`)
+  return response.data
+}
+
+export const fetchDeviceCredentials = async (
+  deviceId: number,
+  params: { limit?: number; offset?: number }
+): Promise<SearchResponse<Credential>> => {
+  const response = await api.get(`/devices/${deviceId}/credentials`, { params })
+  return response.data
+}
+
+// New statistics endpoints
+export const fetchBrowserStats = async (limit = 20) => {
+  const response = await api.get(`/stats/browsers?limit=${limit}`)
+  return response.data
+}
+export const fetchTldStats = async (limit = 20) => {
+  const response = await api.get(`/stats/tlds?limit=${limit}`)
+  return response.data
+}
+
+export const fetchPasswordStats = async (limit: number = 20) => {
+  const response = await fetch(`${API_BASE_URL}/stats/passwords?limit=${limit}`)
+  if (!response.ok) throw new Error('Failed to fetch password stats')
+  return response.json()
+}
+
+export const fetchSoftwareStats = async (limit = 20) => {
+  const response = await api.get(`/stats/software?limit=${limit}`)
+  return response.data
+}
 
 export default api
