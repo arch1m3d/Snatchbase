@@ -96,18 +96,9 @@ pip install -r requirements.txt
 chmod +x setup_db.sh
 ./setup_db.sh
 
-# Configure environment (optional)
+# Configure environment 
 cp .env.example .env
 # Edit .env if needed
-
-# Start backend server
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-```
-
-Backend will be available at:
-- **API**: http://localhost:8000
-- **Docs**: http://localhost:8000/docs
-- **ReDoc**: http://localhost:8000/redoc
 
 ### 3. Frontend Setup
 
@@ -116,12 +107,6 @@ cd frontend
 
 # Install dependencies
 npm install
-
-# Start development server
-npm run dev
-```
-
-Frontend will be available at: **http://localhost:3000**
 
 ### 4. Auto-Ingestion Setup
 
@@ -134,11 +119,39 @@ mkdir -p backend/data/incoming/uploads
 # Place your ZIP archives in the uploads folder
 # Note: Archives must NOT be password protected
 cp your_stealer_logs.zip backend/data/incoming/uploads/
+```
 
-# Start the backend (auto-ingestion runs automatically)
+### 5. Start Snatchbase
+
+Use the provided startup script to launch both backend and frontend:
+
+```bash
+# Make script executable (first time only)
+chmod +x start_snatchbase.sh
+
+# Start both services
+./start_snatchbase.sh
+```
+
+The script will:
+- Start the backend API on http://localhost:8000
+- Start the frontend on http://localhost:3000
+- Enable auto-ingestion (watches `backend/data/incoming/uploads/`)
+- Show access points and usage info
+
+**Press Ctrl+C to stop all services**
+
+Alternatively, start services manually:
+
+```bash
+# Terminal 1 - Backend
 cd backend
 source venv/bin/activate
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+
+# Terminal 2 - Frontend
+cd frontend
+npm run dev
 ```
 
 **The backend will automatically detect and ingest any ZIP files in `backend/data/incoming/uploads/`** when it starts and while running!
