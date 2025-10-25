@@ -1,6 +1,6 @@
 # 🎯 Snatchbase
 
-**A powerful stealer log aggregation and threat intelligence platform**
+**Powerful stealer log aggregation and threat intelligence platform**
 
 Modern web application for ingesting, analyzing, and searching through stealer malware logs. Built with FastAPI, React, and PostgreSQL for security researchers and threat intelligence teams.
 
