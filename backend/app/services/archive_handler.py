@@ -175,10 +175,11 @@ class SmartArchiveHandler:
                         if not password:
                             raise ValueError("Could not find password")
 
-                    # Verify password works
+                    # Verify password works (just read 1KB to test)
                     try:
                         first_file = zf.namelist()[0]
-                        zf.read(first_file, pwd=password.encode())
+                        with zf.open(first_file, pwd=password.encode()) as f:
+                            f.read(1024)  # Only read 1KB to verify
                     except RuntimeError:
                         raise ValueError(f"Password '{password}' is incorrect")
 
@@ -198,10 +199,11 @@ class SmartArchiveHandler:
 
                     rf.setpassword(password)
 
-                    # Verify password works
+                    # Verify password works (just read 1KB to test)
                     try:
                         first_file = rf.namelist()[0]
-                        rf.read(first_file)
+                        with rf.open(first_file) as f:
+                            f.read(1024)  # Only read 1KB to verify
                     except rarfile.PasswordRequired:
                         raise ValueError(f"Password '{password}' is incorrect")
 
