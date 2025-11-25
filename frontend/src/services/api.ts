@@ -69,6 +69,20 @@ export interface UploadResponse {
   status: string
 }
 
+export interface Upload {
+  id: number
+  filename: string
+  status: string
+  devices_found: number
+  devices_processed: number
+  devices_skipped: number
+  total_credentials: number
+  total_files: number
+  created_at: string
+  completed_at?: string
+  error_message?: string
+}
+
 // API Functions
 export const fetchStatistics = async (): Promise<Statistics> => {
   const response = await api.get('/api/stats')
@@ -87,6 +101,11 @@ export const fetchCountryStats = async (limit = 20): Promise<CountryStatistic[]>
 
 export const fetchStealerStats = async (limit = 20): Promise<StealerStatistic[]> => {
   const response = await api.get(`/api/stats/stealers?limit=${limit}`)
+  return response.data
+}
+
+export const fetchRecentUploads = async (limit = 10): Promise<Upload[]> => {
+  const response = await api.get(`/api/stats/recent-uploads?limit=${limit}`)
   return response.data
 }
 

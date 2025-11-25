@@ -1,7 +1,7 @@
 """Service for searching and filtering stealer log data"""
 from sqlalchemy.orm import Session
 from sqlalchemy import func, or_, and_, desc
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from app.models import Credential, System, Upload, Device, Software, PasswordStat
 from app.schemas import CredentialResponse, SystemResponse, StatisticsResponse, DomainStatistic, CountryStatistic, StealerStatistic
 
@@ -408,5 +408,27 @@ class SearchService:
                 cred_response.duplicate_ids = [d.id for d in duplicates]
             
             enriched.append(cred_response)
-        
+
         return enriched
+
+    def get_recent_uploads(self, db: Session, limit: int = 10) -> List[Dict[str, Any]]:
+        """Get recent archive uploads/ingestions"""
+        uploads = db.query(Upload).order_by(desc(Upload.created_at)).limit(limit).all()
+
+        results = []
+        for upload in uploads:
+            results.append({
+                'id': upload.id,
+                'filename': upload.filename,
+                'status': upload.status,
+                'devices_found': upload.devices_found,
+                'devices_processed': upload.devices_processed,
+                'devices_skipped': upload.devices_skipped,
+                'total_credentials': upload.total_credentials,
+                'total_files': upload.total_files,
+                'created_at': upload.created_at.isoformat() if upload.created_at else None,
+                'completed_at': upload.completed_at.isoformat() if upload.completed_at else None,
+                'error_message': upload.error_message
+            })
+
+        return results

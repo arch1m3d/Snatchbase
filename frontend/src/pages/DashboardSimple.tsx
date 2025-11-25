@@ -1,19 +1,23 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
-import { 
-  Database, 
-  Globe, 
-  Search, 
+import {
+  Database,
+  Globe,
+  Search,
   TrendingUp,
   AlertTriangle,
   Server,
   Activity,
   Key,
   ArrowRight,
-  Zap
+  Zap,
+  Archive,
+  CheckCircle,
+  XCircle,
+  Clock
 } from 'lucide-react'
-import { fetchStatistics, fetchDevices } from '@/services/api'
+import { fetchStatistics, fetchDevices, fetchRecentUploads, Upload } from '@/services/api'
 import toast from 'react-hot-toast'
 
 interface Stats {
@@ -28,6 +32,7 @@ interface Stats {
 export default function DashboardSimple() {
   const [stats, setStats] = useState<Stats | null>(null)
   const [recentDevices, setRecentDevices] = useState<any[]>([])
+  const [recentUploads, setRecentUploads] = useState<Upload[]>([])
   const [loading, setLoading] = useState(true)
   const navigate = useNavigate()
 
@@ -38,13 +43,15 @@ export default function DashboardSimple() {
   const loadDashboardData = async () => {
     try {
       setLoading(true)
-      const [statsData, devices] = await Promise.all([
+      const [statsData, devices, uploads] = await Promise.all([
         fetchStatistics(),
-        fetchDevices({ limit: 5 })
+        fetchDevices({ limit: 5 }),
+        fetchRecentUploads(5)
       ])
-      
+
       setStats(statsData)
       setRecentDevices(devices.results)
+      setRecentUploads(uploads)
     } catch (error) {
       console.error('Failed to load dashboard:', error)
       toast.error('Failed to load dashboard data')
@@ -229,6 +236,81 @@ export default function DashboardSimple() {
               </div>
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* Recent Archives */}
+      <div className="mt-12">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+            <Archive className="h-6 w-6 text-green-400" />
+            Recent Archives
+          </h2>
+        </div>
+
+        <div className="space-y-3">
+          {recentUploads.length === 0 ? (
+            <div className="card bg-dark-800/50 backdrop-blur-xl border border-dark-700/50 p-8 rounded-xl text-center">
+              <Archive className="h-12 w-12 text-dark-600 mx-auto mb-3" />
+              <p className="text-dark-400">No archives ingested yet</p>
+            </div>
+          ) : (
+            recentUploads.map((upload) => (
+              <div
+                key={upload.id}
+                className="card bg-dark-800/50 backdrop-blur-xl border border-dark-700/50 p-5 rounded-xl hover:border-primary-500/50 transition-all"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-start gap-3 flex-1 min-w-0">
+                    <Archive className="h-5 w-5 text-green-400 flex-shrink-0 mt-1" />
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-white truncate mb-1" title={upload.filename}>
+                        {upload.filename}
+                      </h3>
+                      <div className="flex items-center gap-4 text-sm text-dark-400">
+                        <span>
+                          {new Date(upload.created_at).toLocaleString()}
+                        </span>
+                        {upload.status === 'completed' && (
+                          <span className="flex items-center gap-1 text-green-400">
+                            <CheckCircle className="h-4 w-4" />
+                            Completed
+                          </span>
+                        )}
+                        {upload.status === 'failed' && (
+                          <span className="flex items-center gap-1 text-red-400">
+                            <XCircle className="h-4 w-4" />
+                            Failed
+                          </span>
+                        )}
+                        {upload.status === 'processing' && (
+                          <span className="flex items-center gap-1 text-yellow-400">
+                            <Clock className="h-4 w-4" />
+                            Processing
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-4 text-sm flex-shrink-0">
+                    <div className="text-center">
+                      <p className="text-dark-400 mb-1">Devices</p>
+                      <p className="text-white font-bold">{upload.devices_processed.toLocaleString()}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-dark-400 mb-1">Credentials</p>
+                      <p className="text-white font-bold">{upload.total_credentials.toLocaleString()}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-dark-400 mb-1">Files</p>
+                      <p className="text-white font-bold">{upload.total_files.toLocaleString()}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
     </div>

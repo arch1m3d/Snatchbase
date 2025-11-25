@@ -58,3 +58,9 @@ async def get_password_stats(limit: int = 20, db: Session = Depends(get_db)):
 async def get_software_stats(limit: int = 20, db: Session = Depends(get_db)):
     """Get software statistics"""
     return search_service.get_software_statistics(db, limit)
+
+
+@router.get("/stats/recent-uploads")
+async def get_recent_uploads(limit: int = 10, db: Session = Depends(get_db)):
+    """Get recently ingested archives"""
+    return search_service.get_recent_uploads(db, limit)
