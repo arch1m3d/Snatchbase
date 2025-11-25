@@ -109,17 +109,21 @@ class SmartArchiveHandler:
                 seen.add(pwd)
                 unique_passwords.append(pwd)
 
-        self.logger.info(f"🔐 Trying {len(unique_passwords)} passwords...")
+        self.logger.info(f"🔐 Trying {len(unique_passwords)} password(s)...")
 
         # Try each password
         for i, password in enumerate(unique_passwords, 1):
+            # Show which password we're trying (truncate if too long)
+            pwd_display = password if len(password) < 50 else password[:47] + "..."
+            self.logger.info(f"   Attempt {i}/{len(unique_passwords)}: {pwd_display}")
+
             try:
                 if archive_type == 'zip':
                     with zipfile.ZipFile(archive_path, 'r') as zf:
                         # Try to read first file with password
                         first_file = zf.namelist()[0]
                         zf.read(first_file, pwd=password.encode())
-                        self.logger.info(f"✅ Password found: '{password}' (attempt {i}/{len(unique_passwords)})")
+                        self.logger.info(f"✅ Password correct: '{pwd_display}'")
                         return password
 
                 elif archive_type == 'rar':
@@ -127,13 +131,14 @@ class SmartArchiveHandler:
                         rf.setpassword(password)
                         first_file = rf.namelist()[0]
                         rf.read(first_file)
-                        self.logger.info(f"✅ Password found: '{password}' (attempt {i}/{len(unique_passwords)})")
+                        self.logger.info(f"✅ Password correct: '{pwd_display}'")
                         return password
 
             except (RuntimeError, rarfile.BadRarFile, rarfile.PasswordRequired):
+                self.logger.info(f"   ❌ Wrong password")
                 continue
             except Exception as e:
-                self.logger.debug(f"Error trying password '{password}': {e}")
+                self.logger.info(f"   ❌ Error: {e}")
                 continue
 
         self.logger.error(f"❌ Could not find password after {len(unique_passwords)} attempts")
