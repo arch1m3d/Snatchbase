@@ -18,6 +18,9 @@ backend/data/incoming/uploads/*
 .env.local
 .env.production
 
+# Telegram session files
+*.session
+
 # Python
 __pycache__/
 *.py[cod]
