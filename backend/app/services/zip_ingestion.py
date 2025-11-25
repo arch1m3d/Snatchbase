@@ -11,8 +11,8 @@ from collections import defaultdict
 
 from app.models import Device, Credential, File, PasswordStat, Software, Upload, Wallet
 from app.services.zip_processor import (
-    ZipStructureAnalyzer, 
-    ZipFileGrouper, 
+    ZipStructureAnalyzer,
+    ZipFileGrouper,
     compute_device_hash,
     is_likely_text_file
 )
@@ -21,6 +21,7 @@ from app.services.software_parser import SoftwareFileParser
 from app.services.system_parser import SystemFileParser
 from app.services.wallet_parser import WalletParser
 from app.services.cc_integration import process_credit_cards_for_device
+from app.services.archive_handler import SmartArchiveHandler
 
 
 def sanitize_text(text: Optional[str]) -> Optional[str]:
@@ -62,7 +63,7 @@ def extract_stealer_name(zip_filename: str) -> Optional[str]:
 
 class ZipIngestionService:
     """Service for ingesting ZIP files containing stealer logs"""
-    
+
     def __init__(self, logger: Optional[logging.Logger] = None):
         self.logger = logger or logging.getLogger(__name__)
         self.analyzer = ZipStructureAnalyzer()
@@ -71,6 +72,21 @@ class ZipIngestionService:
         self.software_parser = SoftwareFileParser()
         self.system_parser = SystemFileParser()
         self.wallet_parser = WalletParser()
+
+        # Load custom passwords if available
+        passwords_file = Path(__file__).parent.parent.parent / "passwords.txt"
+        custom_passwords = []
+        if passwords_file.exists():
+            with open(passwords_file) as f:
+                custom_passwords = [
+                    line.strip() for line in f
+                    if line.strip() and not line.strip().startswith('#')
+                ]
+
+        self.archive_handler = SmartArchiveHandler(
+            logger=self.logger,
+            custom_passwords=custom_passwords
+        )
     
     def process_zip_file(self, zip_path: Path, db: Session) -> Dict:
         """Process a ZIP file and ingest all data"""
@@ -89,8 +105,15 @@ class ZipIngestionService:
         db.commit()
         
         try:
-            # Open ZIP file
-            with zipfile.ZipFile(zip_path, 'r') as zip_file:
+            # Open ZIP file (with password support)
+            archive, password = self.archive_handler.open_archive(zip_path)
+            if password:
+                self.logger.info(f"🔓 Archive opened with password: {password}")
+
+            # Use the archive as zip_file
+            zip_file = archive
+
+            try:
                 # Group files by device
                 device_map, structure_info = self.grouper.group_by_device(zip_file)
                 
@@ -162,7 +185,11 @@ class ZipIngestionService:
                 
                 self.logger.info(f"✅ ZIP processing completed: {result}")
                 return result
-                
+
+            finally:
+                # Close the archive
+                zip_file.close()
+
         except Exception as e:
             self.logger.error(f"❌ Error processing ZIP: {e}", exc_info=True)
             upload.status = "failed"
