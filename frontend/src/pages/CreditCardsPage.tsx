@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { CreditCard as CreditCardIcon } from 'lucide-react'
 import { fetchCreditCards, CreditCard, SearchResponse } from '../services/api'
 import CreditCardList from '../components/CreditCardList'
 import CreditCardStats from '../components/CreditCardStats'
@@ -63,42 +64,43 @@ const CreditCardsPage: React.FC = () => {
   const cardBrands = ['Visa', 'Mastercard', 'American Express', 'Discover', 'JCB', 'Diners Club']
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-dark-900 via-dark-800 to-dark-900 p-8">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">💳 Credit Cards</h1>
-              <p className="mt-1 text-sm text-gray-600">
-                Browse and analyze discovered credit card information
-              </p>
-            </div>
-            <button
-              onClick={() => setShowStats(!showStats)}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-            >
-              {showStats ? 'Show Cards' : 'Show Statistics'}
-            </button>
+      <div className="mb-8">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-4xl font-bold text-white mb-2 flex items-center gap-3">
+              <CreditCardIcon className="h-10 w-10 text-primary-500" />
+              Credit Cards
+            </h1>
+            <p className="text-dark-400">
+              Browse and analyze discovered credit card information
+            </p>
           </div>
+          <button
+            onClick={() => setShowStats(!showStats)}
+            className="px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium"
+          >
+            {showStats ? 'Show Cards' : 'Show Statistics'}
+          </button>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto">
         {showStats ? (
           <CreditCardStats />
         ) : (
           <>
             {/* Filters */}
-            <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Filter by Brand</h2>
+            <div className="bg-dark-800 border border-dark-700 rounded-lg p-6 mb-6">
+              <h2 className="text-lg font-semibold text-white mb-4">Filter by Brand</h2>
               <div className="flex flex-wrap gap-2">
                 <button
                   onClick={() => handleBrandFilter('')}
                   className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                     selectedBrand === ''
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      ? 'bg-primary-600 text-white'
+                      : 'bg-dark-700 text-dark-300 hover:bg-dark-600'
                   }`}
                 >
                   All Brands
@@ -109,8 +111,8 @@ const CreditCardsPage: React.FC = () => {
                     onClick={() => handleBrandFilter(brand)}
                     className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                       selectedBrand === brand
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        ? 'bg-primary-600 text-white'
+                        : 'bg-dark-700 text-dark-300 hover:bg-dark-600'
                     }`}
                   >
                     {brand}
@@ -122,7 +124,7 @@ const CreditCardsPage: React.FC = () => {
             {/* Results Summary */}
             {!isLoading && (
               <div className="mb-6">
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-dark-400">
                   Showing {cards.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0} -{' '}
                   {Math.min(currentPage * itemsPerPage, totalCards)} of {totalCards.toLocaleString()} credit cards
                   {selectedBrand && ` (filtered by ${selectedBrand})`}
@@ -132,7 +134,7 @@ const CreditCardsPage: React.FC = () => {
 
             {/* Error Message */}
             {error && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6 text-red-700">
+              <div className="bg-red-900/20 border border-red-500/50 rounded-lg p-4 mb-6 text-red-400">
                 {error}
               </div>
             )}

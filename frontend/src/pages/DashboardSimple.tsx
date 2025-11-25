@@ -55,13 +55,11 @@ export default function DashboardSimple() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-        >
-          <Activity className="h-12 w-12 text-primary-500" />
-        </motion.div>
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-dark-900 via-dark-800 to-dark-900">
+        <div className="text-center">
+          <Activity className="h-12 w-12 text-primary-500 animate-pulse mx-auto" />
+          <p className="mt-4 text-dark-400">Loading...</p>
+        </div>
       </div>
     )
   }
@@ -120,11 +118,7 @@ export default function DashboardSimple() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-dark-900 via-dark-800 to-dark-900 p-8">
       {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="mb-12"
-      >
+      <div className="mb-12">
         <h1 className="text-5xl font-bold text-white mb-3 flex items-center gap-4">
           <Database className="h-12 w-12 text-primary-500" />
           Welcome to Snatchbase
@@ -132,16 +126,13 @@ export default function DashboardSimple() {
         <p className="text-xl text-dark-400">
           Your comprehensive stealer log management platform
         </p>
-      </motion.div>
+      </div>
 
       {/* Stats Overview */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-        {statCards.map((stat, index) => (
-          <motion.div
+        {statCards.map((stat) => (
+          <div
             key={stat.title}
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: index * 0.1 }}
             onClick={() => {
               if (stat.title === 'Total Credentials') navigate('/search')
               else if (stat.title === 'Infected Devices') navigate('/devices')
@@ -156,29 +147,21 @@ export default function DashboardSimple() {
                 <p className="text-3xl font-bold text-white">{stat.value}</p>
               </div>
             </div>
-          </motion.div>
+          </div>
         ))}
       </div>
 
       {/* Quick Actions */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4 }}
-        className="mb-12"
-      >
+      <div className="mb-12">
         <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
           <Zap className="h-6 w-6 text-primary-500" />
           Quick Actions
         </h2>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {quickActions.map((action, index) => (
-            <motion.button
+          {quickActions.map((action) => (
+            <button
               key={action.title}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5 + index * 0.1 }}
               onClick={action.action}
               className="group relative overflow-hidden"
             >
@@ -197,17 +180,13 @@ export default function DashboardSimple() {
                   <ArrowRight className="h-4 w-4 ml-2 group-hover:translate-x-2 transition-transform" />
                 </div>
               </div>
-            </motion.button>
+            </button>
           ))}
         </div>
-      </motion.div>
+      </div>
 
       {/* Recent Devices */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.8 }}
-      >
+      <div>
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold text-white flex items-center gap-2">
             <Server className="h-6 w-6 text-purple-400" />
@@ -223,12 +202,9 @@ export default function DashboardSimple() {
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {recentDevices.map((device, index) => (
-            <motion.div
+          {recentDevices.map((device) => (
+            <div
               key={device.device_id}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.9 + index * 0.1 }}
               onClick={() => navigate(`/device/${device.id}`)}
               className="card bg-dark-800/50 backdrop-blur-xl border border-dark-700/50 p-5 rounded-xl hover:border-primary-500/50 transition-all cursor-pointer group"
             >
@@ -251,10 +227,10 @@ export default function DashboardSimple() {
                   <p className="text-white font-bold">{device.total_domains.toLocaleString()}</p>
                 </div>
               </div>
-            </motion.div>
+            </div>
           ))}
         </div>
-      </motion.div>
+      </div>
     </div>
   )
 }
