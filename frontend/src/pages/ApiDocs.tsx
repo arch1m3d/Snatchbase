@@ -65,7 +65,7 @@ export default function ApiDocs() {
   const [stats, setStats] = useState<any>(null);
 
   useEffect(() => {
-    fetch('http://localhost:8000/stats')
+    fetch('/api/stats')
       .then(res => res.json())
       .then(setStats)
       .catch(console.error);
@@ -74,16 +74,16 @@ export default function ApiDocs() {
   const endpoints = [
     {
       method: 'GET',
-      path: '/stats',
+      path: '/api/stats',
       description: 'Get overall database statistics.',
-      example: 'curl http://localhost:8000/stats',
+      example: 'curl http://localhost:8000/api/stats',
       response: JSON.stringify({ total_credentials: 46346, total_systems: 110, unique_domains: 2847, unique_stealers: 1989 }, null, 2)
     },
     {
       method: 'GET',
-      path: '/search/credentials?q=...',
+      path: '/api/search/credentials?q=...',
       description: 'Search for credentials with a query string. Supports advanced queries like `domain:google.com`.',
-      example: 'curl "http://localhost:8000/search/credentials?q=domain:gmail.com&limit=1"',
+      example: 'curl "http://localhost:8000/api/search/credentials?q=domain:gmail.com&limit=1"',
       response: JSON.stringify({ results: [{ id: 1, username: 'test', password: 'password123', domain: 'gmail.com' }], total: 1, limit: 1, offset: 0 }, null, 2)
     }
   ];
