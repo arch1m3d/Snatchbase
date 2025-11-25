@@ -1,0 +1,273 @@
+"""
+Smart Archive Handler - Supports ZIP and RAR with password detection
+"""
+import zipfile
+import re
+from pathlib import Path
+from typing import Optional, List, Tuple, Union
+from dataclasses import dataclass
+import logging
+
+try:
+    import rarfile
+    RARFILE_AVAILABLE = True
+except ImportError:
+    RARFILE_AVAILABLE = False
+
+
+@dataclass
+class ArchiveInfo:
+    """Information about an archive file"""
+    path: Path
+    archive_type: str  # 'zip' or 'rar'
+    is_encrypted: bool
+    password: Optional[str] = None
+
+
+class SmartArchiveHandler:
+    """
+    Handles both ZIP and RAR archives with smart password detection
+    """
+
+    # Common passwords for stealer logs (in order of likelihood)
+    COMMON_PASSWORDS = [
+        'infected',
+        '1234',
+        'password',
+        'malware',
+        '123',
+        '12345',
+        'stealer',
+        'logs',
+        '1',
+        'redline',
+        'raccoon',
+        'vidar',
+        'aurora',
+        'virus',
+        'hack',
+    ]
+
+    def __init__(self, logger: Optional[logging.Logger] = None, custom_passwords: Optional[List[str]] = None):
+        self.logger = logger or logging.getLogger(__name__)
+        self.custom_passwords = custom_passwords or []
+
+        if not RARFILE_AVAILABLE:
+            self.logger.warning("⚠️  rarfile not installed - RAR support disabled")
+            self.logger.warning("   Install with: pip install rarfile")
+            self.logger.warning("   Also install unrar: apt install unrar / brew install unrar")
+
+    def detect_archive_type(self, file_path: Path) -> Optional[str]:
+        """Detect if file is ZIP or RAR"""
+        suffix = file_path.suffix.lower()
+
+        if suffix == '.zip':
+            return 'zip'
+        elif suffix in ['.rar', '.r00', '.r01']:
+            return 'rar' if RARFILE_AVAILABLE else None
+
+        # Try to detect by magic bytes
+        try:
+            with open(file_path, 'rb') as f:
+                header = f.read(8)
+
+                # ZIP magic: PK\x03\x04
+                if header[:4] == b'PK\x03\x04':
+                    return 'zip'
+
+                # RAR magic: Rar!\x1a\x07
+                if header[:6] == b'Rar!\x1a\x07':
+                    return 'rar' if RARFILE_AVAILABLE else None
+        except Exception:
+            pass
+
+        return None
+
+    def extract_password_from_filename(self, filename: str) -> List[str]:
+        """
+        Extract potential passwords from filename
+
+        Common patterns:
+        - logs_password123.rar
+        - stealer_infected.zip
+        - redline[1234].rar
+        - vidar_pass=infected.rar
+        """
+        passwords = []
+
+        # Pattern 1: _password or _pass followed by text
+        match = re.search(r'[_\-](pass|password|pw)[_\-=:]?([a-zA-Z0-9]+)', filename, re.I)
+        if match:
+            passwords.append(match.group(2))
+
+        # Pattern 2: text in brackets [password]
+        match = re.search(r'\[([a-zA-Z0-9]+)\]', filename)
+        if match:
+            passwords.append(match.group(1))
+
+        # Pattern 3: text in parentheses (password)
+        match = re.search(r'\(([a-zA-Z0-9]+)\)', filename)
+        if match:
+            passwords.append(match.group(1))
+
+        # Pattern 4: Common password keywords in filename
+        for keyword in ['infected', 'malware', 'virus', 'stealer']:
+            if keyword in filename.lower():
+                passwords.append(keyword)
+
+        return passwords
+
+    def try_passwords(self, archive_path: Path, archive_type: str) -> Optional[str]:
+        """
+        Try to find the correct password for an encrypted archive
+
+        Strategy:
+        1. Try passwords from filename
+        2. Try custom passwords (user-provided)
+        3. Try common stealer log passwords
+        """
+        # Build password list
+        passwords_to_try = []
+
+        # 1. Filename-based passwords (highest priority)
+        filename_passwords = self.extract_password_from_filename(archive_path.name)
+        passwords_to_try.extend(filename_passwords)
+
+        # 2. Custom passwords
+        passwords_to_try.extend(self.custom_passwords)
+
+        # 3. Common passwords
+        passwords_to_try.extend(self.COMMON_PASSWORDS)
+
+        # Remove duplicates while preserving order
+        seen = set()
+        unique_passwords = []
+        for pwd in passwords_to_try:
+            if pwd not in seen:
+                seen.add(pwd)
+                unique_passwords.append(pwd)
+
+        self.logger.info(f"🔐 Trying {len(unique_passwords)} passwords...")
+
+        # Try each password
+        for i, password in enumerate(unique_passwords, 1):
+            try:
+                if archive_type == 'zip':
+                    with zipfile.ZipFile(archive_path, 'r') as zf:
+                        # Try to read first file with password
+                        first_file = zf.namelist()[0]
+                        zf.read(first_file, pwd=password.encode())
+                        self.logger.info(f"✅ Password found: '{password}' (attempt {i}/{len(unique_passwords)})")
+                        return password
+
+                elif archive_type == 'rar':
+                    with rarfile.RarFile(archive_path) as rf:
+                        rf.setpassword(password)
+                        first_file = rf.namelist()[0]
+                        rf.read(first_file)
+                        self.logger.info(f"✅ Password found: '{password}' (attempt {i}/{len(unique_passwords)})")
+                        return password
+
+            except (RuntimeError, rarfile.BadRarFile, rarfile.PasswordRequired):
+                continue
+            except Exception as e:
+                self.logger.debug(f"Error trying password '{password}': {e}")
+                continue
+
+        self.logger.error(f"❌ Could not find password after {len(unique_passwords)} attempts")
+        return None
+
+    def open_archive(self, archive_path: Path, password: Optional[str] = None) -> Tuple[Union[zipfile.ZipFile, 'rarfile.RarFile'], str]:
+        """
+        Open archive with automatic type detection and password handling
+
+        Returns: (archive_object, password_used)
+        """
+        archive_type = self.detect_archive_type(archive_path)
+
+        if not archive_type:
+            raise ValueError(f"Unsupported archive type: {archive_path.suffix}")
+
+        self.logger.info(f"📦 Opening {archive_type.upper()} archive: {archive_path.name}")
+
+        # Try to open archive
+        try:
+            if archive_type == 'zip':
+                zf = zipfile.ZipFile(archive_path, 'r')
+
+                # Check if encrypted
+                if any(info.flag_bits & 0x1 for info in zf.filelist):
+                    self.logger.info("🔒 Archive is password-protected")
+
+                    if not password:
+                        password = self.try_passwords(archive_path, 'zip')
+                        if not password:
+                            raise ValueError("Could not find password")
+
+                    # Verify password works
+                    try:
+                        first_file = zf.namelist()[0]
+                        zf.read(first_file, pwd=password.encode())
+                    except RuntimeError:
+                        raise ValueError(f"Password '{password}' is incorrect")
+
+                return zf, password
+
+            elif archive_type == 'rar':
+                rf = rarfile.RarFile(archive_path)
+
+                # Check if encrypted
+                if rf.needs_password():
+                    self.logger.info("🔒 Archive is password-protected")
+
+                    if not password:
+                        password = self.try_passwords(archive_path, 'rar')
+                        if not password:
+                            raise ValueError("Could not find password")
+
+                    rf.setpassword(password)
+
+                    # Verify password works
+                    try:
+                        first_file = rf.namelist()[0]
+                        rf.read(first_file)
+                    except rarfile.PasswordRequired:
+                        raise ValueError(f"Password '{password}' is incorrect")
+
+                return rf, password
+
+        except Exception as e:
+            self.logger.error(f"❌ Failed to open archive: {e}")
+            raise
+
+    def get_archive_info(self, archive_path: Path) -> ArchiveInfo:
+        """Get information about an archive"""
+        archive_type = self.detect_archive_type(archive_path)
+
+        if not archive_type:
+            raise ValueError(f"Unsupported archive type: {archive_path.suffix}")
+
+        is_encrypted = False
+        password = None
+
+        try:
+            if archive_type == 'zip':
+                with zipfile.ZipFile(archive_path, 'r') as zf:
+                    is_encrypted = any(info.flag_bits & 0x1 for info in zf.filelist)
+
+            elif archive_type == 'rar':
+                with rarfile.RarFile(archive_path) as rf:
+                    is_encrypted = rf.needs_password()
+
+            if is_encrypted:
+                password = self.try_passwords(archive_path, archive_type)
+
+        except Exception as e:
+            self.logger.warning(f"Could not analyze archive: {e}")
+
+        return ArchiveInfo(
+            path=archive_path,
+            archive_type=archive_type,
+            is_encrypted=is_encrypted,
+            password=password
+        )

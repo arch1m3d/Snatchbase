@@ -21,6 +21,9 @@ backend/data/incoming/uploads/*
 # Telegram session files
 *.session
 
+# Custom password lists
+backend/passwords.txt
+
 # Python
 __pycache__/
 *.py[cod]
