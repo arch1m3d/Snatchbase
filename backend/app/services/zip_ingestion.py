@@ -234,12 +234,33 @@ class ZipIngestionService:
                     self.logger.info(f"📦 [{file_size_mb:.1f} MB] Extracting: {inner_zip_name}")
 
                     try:
+                        # Extract with progress for large files
                         with open(inner_zip_path, 'wb') as f:
-                            # Use outer password when reading encrypted inner ZIP from outer archive
+                            # Open the inner ZIP entry from outer archive
                             if outer_password:
-                                f.write(outer_zip.read(inner_zip_entry, pwd=outer_password.encode()))
+                                with outer_zip.open(inner_zip_entry, pwd=outer_password.encode()) as zf:
+                                    # Read and write in chunks to show progress
+                                    chunk_size = 10 * 1024 * 1024  # 10 MB chunks
+                                    total_read = 0
+                                    last_progress = 0
+
+                                    while True:
+                                        chunk = zf.read(chunk_size)
+                                        if not chunk:
+                                            break
+                                        f.write(chunk)
+                                        total_read += len(chunk)
+
+                                        # Log progress every 50 MB
+                                        progress_mb = total_read / 1024 / 1024
+                                        if progress_mb - last_progress >= 50:
+                                            percent = (total_read / inner_zip_entry.file_size) * 100
+                                            self.logger.info(f"   📊 Progress: {progress_mb:.0f}/{file_size_mb:.0f} MB ({percent:.0f}%)")
+                                            last_progress = progress_mb
                             else:
+                                # No password, extract directly
                                 f.write(outer_zip.read(inner_zip_entry))
+
                         self.logger.info(f"   ✓ Extracted to temp directory")
                     except RuntimeError as e:
                         if "password" in str(e).lower():
