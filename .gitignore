@@ -1,9 +1,3 @@
-# Database files
-*.db
-*.sqlite
-*.sqlite3
-snatchbase.db
-
 # Stealer logs and sensitive data
 !data/.gitkeep
 *.zip

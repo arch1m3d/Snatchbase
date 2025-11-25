@@ -7,27 +7,20 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Database URL - defaults to PostgreSQL
+# Database URL - PostgreSQL only
 DATABASE_URL = os.getenv(
-    "DATABASE_URL", 
+    "DATABASE_URL",
     "postgresql://postgres:postgres@localhost:5432/snatchbase"
 )
 
-# Create engine with connection pooling for PostgreSQL
-if DATABASE_URL.startswith("sqlite"):
-    engine = create_engine(
-        DATABASE_URL,
-        connect_args={"check_same_thread": False}
-    )
-else:
-    # PostgreSQL configuration with connection pooling
-    engine = create_engine(
-        DATABASE_URL,
-        pool_size=20,
-        max_overflow=40,
-        pool_pre_ping=True,
-        pool_recycle=3600
-    )
+# PostgreSQL engine with connection pooling
+engine = create_engine(
+    DATABASE_URL,
+    pool_size=20,
+    max_overflow=40,
+    pool_pre_ping=True,
+    pool_recycle=3600
+)
 
 # Create session factory
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

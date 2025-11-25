@@ -63,7 +63,7 @@ See `ARCHITECTURE_V2.md` for complete architectural details.
 
 ### Backend Stack
 - **FastAPI** - High-performance async Python web framework (v2.0.0)
-- **SQLAlchemy** - ORM with PostgreSQL/SQLite support
+- **SQLAlchemy** - ORM with PostgreSQL support
 - **Uvicorn** - ASGI server for production deployment
 - **Watchdog** - File system monitoring for auto-ingestion
 - **Service Manager** - Process supervision and health monitoring
@@ -99,7 +99,7 @@ See `FRONTEND_INTEGRATION.md` for frontend-backend sync details.
 ### Prerequisites
 - **Python 3.10+** with pip
 - **Node.js 18+** with npm
-- **PostgreSQL** (optional, SQLite works for development)
+- **PostgreSQL** database server
 
 ### Installation & Setup
 
@@ -115,7 +115,7 @@ cd Snatchbase
 That's it! The start script will:
 - ✅ Create Python virtual environment
 - ✅ Install backend dependencies
-- ✅ Set up SQLite database
+- ✅ Set up PostgreSQL database
 - ✅ Start API server on http://localhost:8000
 - ✅ Install frontend dependencies
 - ✅ Start frontend on http://localhost:3000
@@ -359,7 +359,7 @@ npm test
 
 ### Recommended Production Setup
 1. Enable authentication (JWT tokens)
-2. Use PostgreSQL instead of SQLite
+2. Use PostgreSQL with proper connection pooling
 3. Enable HTTPS with valid certificates
 4. Implement rate limiting
 5. Set up proper logging and monitoring
