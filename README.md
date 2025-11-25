@@ -1,6 +1,6 @@
-# 🎯 Snatchbase
+# Snatchbase
 
-**Powerful stealer log aggregation and threat intelligence platform**
+**Open Source stealer log aggregation and threat intelligence platform**
 
 Modern web application for ingesting, analyzing, and searching through stealer malware logs. Built with FastAPI, React, and PostgreSQL for security researchers and threat intelligence teams.
 
@@ -8,6 +8,24 @@ Modern web application for ingesting, analyzing, and searching through stealer m
 ![Python](https://img.shields.io/badge/python-3.10+-blue.svg)
 ![Node](https://img.shields.io/badge/node-18+-green.svg)
 
+
+
+---
+
+## Current State and ToDo
+
+### Current State
+As you may have seen by all the emojis this project is mostly vibecoded. Meaning there is alot of weird bs. Im in the process of cleaning everyhting up and making it more maintainable. 
+
+### ToDo
+- Add .RAR Archive support
+- Overwork UI, ultra laggy
+- Implement Stealer family detection
+- Refine parser to handle more stealer log formats
+- Fix File Browser (currently FUBAR) 
+- And alot of other stuff i havent found yet. If you dare to support im forever grateful :)
+
+Now enjoy the slop: 
 ---
 
 ## ✨ Features
