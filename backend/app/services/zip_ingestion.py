@@ -123,7 +123,7 @@ class ZipIngestionService:
                 if structure_info.structure_type == "nested":
                     self.logger.info(f"📦 Detected nested ZIP structure")
                     self.logger.info(f"📦 This may take a while - extracting and processing inner ZIPs...")
-                    return self._process_nested_zips(zip_file, zip_path, upload_batch, upload, db)
+                    return self._process_nested_zips(zip_file, zip_path, upload_batch, upload, db, outer_password=password)
                 
                 self.logger.info(f"📊 Found {len(device_map)} devices in ZIP")
                 
@@ -200,7 +200,7 @@ class ZipIngestionService:
             db.commit()
             raise
     
-    def _process_nested_zips(self, outer_zip: zipfile.ZipFile, zip_path: Path, upload_batch: str, upload: Upload, db: Session) -> Dict:
+    def _process_nested_zips(self, outer_zip: zipfile.ZipFile, zip_path: Path, upload_batch: str, upload: Upload, db: Session, outer_password: Optional[str] = None) -> Dict:
         """Process a ZIP file containing inner ZIP files"""
         import tempfile
         import shutil
@@ -229,17 +229,21 @@ class ZipIngestionService:
                     device_names_found.append(inner_zip_name)
                     inner_zip_path = Path(temp_dir) / inner_zip_name
 
-                    # Extract inner ZIP
+                    # Extract inner ZIP (use outer password if available)
                     file_size_mb = inner_zip_entry.file_size / 1024 / 1024
                     self.logger.info(f"📦 [{file_size_mb:.1f} MB] Extracting: {inner_zip_name}")
 
                     try:
                         with open(inner_zip_path, 'wb') as f:
-                            f.write(outer_zip.read(inner_zip_entry))
+                            # Use outer password when reading encrypted inner ZIP from outer archive
+                            if outer_password:
+                                f.write(outer_zip.read(inner_zip_entry, pwd=outer_password.encode()))
+                            else:
+                                f.write(outer_zip.read(inner_zip_entry))
                         self.logger.info(f"   ✓ Extracted to temp directory")
                     except RuntimeError as e:
                         if "password" in str(e).lower():
-                            self.logger.error(f"   ❌ Inner ZIP is password protected")
+                            self.logger.error(f"   ❌ Could not extract inner ZIP (wrong password or corrupted)")
                             continue
                         raise
 
