@@ -96,133 +96,45 @@ See `FRONTEND_INTEGRATION.md` for frontend-backend sync details.
 
 ## 🚀 Quick Start
 
-### Automated Installation (Recommended)
-
-For VPS or production deployment, use the automated installation script:
-
-```bash
-# Option 1: Direct installation (requires curl)
-curl -sSL https://raw.githubusercontent.com/sinikiano/Snatchbase/main/install.sh | bash
-
-# Option 2: Clone and install
-git clone https://github.com/sinikiano/Snatchbase.git
-cd Snatchbase
-chmod +x install.sh
-./install.sh
-```
-
-The installer will:
-- ✅ Check system requirements
-- ✅ Install all dependencies (Python, Node.js, Git, etc.)
-- ✅ Set up Python and Node environments
-- ✅ Create configuration files interactively
-- ✅ Initialize the database
-- ✅ Optionally configure systemd services, Nginx, and firewall
-
-See **[INSTALLATION_GUIDE.md](docs/INSTALLATION_GUIDE.md)** for complete details.
-
-### Manual Installation
-
-If you prefer manual setup or development:
-
-#### Prerequisites
+### Prerequisites
 - **Python 3.10+** with pip
 - **Node.js 18+** with npm
 - **PostgreSQL** (optional, SQLite works for development)
 
-#### 1. Clone Repository
+### Installation & Setup
+
 ```bash
+# 1. Clone repository
 git clone https://github.com/sinikiano/Snatchbase.git
 cd Snatchbase
+
+# 2. Start everything (auto-installs dependencies, sets up DB)
+./start.sh
 ```
 
-#### 2. Backend Setup
+That's it! The start script will:
+- ✅ Create Python virtual environment
+- ✅ Install backend dependencies
+- ✅ Set up SQLite database
+- ✅ Start API server on http://localhost:8000
+- ✅ Install frontend dependencies
+- ✅ Start frontend on http://localhost:3000
 
+### Ingesting Data
+
+Drop ZIP files containing stealer logs into:
+```bash
+backend/data/incoming/uploads/
+```
+
+Then run manual ingestion:
 ```bash
 cd backend
-
-# Create virtual environment
-python3 -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Set up database
-chmod +x setup_db.sh
-./setup_db.sh
-
-# Configure environment 
-cp .env.example .env
-# Edit .env with your settings
+source venv/bin/activate
+python manual_ingest.py
 ```
 
-#### 3. Frontend Setup
-
-```bash
-cd frontend
-
-# Install dependencies
-npm install
-
-# Configure environment
-echo "VITE_API_URL=http://localhost:8000" > .env
-```
-
-#### 4. Auto-Ingestion Setup
-
-The backend automatically watches for new stealer logs when started:
-
-```bash
-# Create the uploads directory
-mkdir -p backend/data/incoming/uploads
-
-# Place your ZIP archives in the uploads folder
-# Note: Archives must NOT be password protected
-cp your_stealer_logs.zip backend/data/incoming/uploads/
-```
-
-#### 5. Start Snatchbase (Manual Development Mode)
-
-**Option 1: Start Everything (Recommended)**
-
-```bash
-./start_full_stack.sh
-```
-
-This will:
-- Launch all backend services (API, Telegram Bot, File Watcher, Wallet Checker)
-- Start the frontend development server
-- Show access points and control commands
-
-**Option 2: Start Frontend Only**
-
-```bash
-./start_frontend.sh
-```
-
-**Option 3: Manual Control (Individual Services)**
-
-```bash
-# Start API service
-python -m backend.launcher.api_service
-
-# Start Telegram bot
-python -m backend.launcher.telegram_service
-
-# Start file watcher
-python -m backend.launcher.file_watcher_service
-
-# Start wallet checker
-python -m backend.launcher.wallet_checker_service
-
-# Control all services
-python -m backend.launcher.snatchctl status
-python -m backend.launcher.snatchctl start api
-python -m backend.launcher.snatchctl stop all
-```
-
-**The file watcher service will automatically detect and ingest any ZIP files in `backend/data/incoming/uploads/`** when running!
+The script will process all ZIPs and show statistics.
 
 ---
 
