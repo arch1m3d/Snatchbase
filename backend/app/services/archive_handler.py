@@ -120,9 +120,11 @@ class SmartArchiveHandler:
             try:
                 if archive_type == 'zip':
                     with zipfile.ZipFile(archive_path, 'r') as zf:
-                        # Try to read first file with password
+                        # Try to read just a small chunk to verify password (don't read entire file!)
                         first_file = zf.namelist()[0]
-                        zf.read(first_file, pwd=password.encode())
+                        with zf.open(first_file, pwd=password.encode()) as f:
+                            # Just read 1KB to verify password works
+                            f.read(1024)
                         self.logger.info(f"✅ Password correct: '{pwd_display}'")
                         return password
 
@@ -130,7 +132,9 @@ class SmartArchiveHandler:
                     with rarfile.RarFile(archive_path) as rf:
                         rf.setpassword(password)
                         first_file = rf.namelist()[0]
-                        rf.read(first_file)
+                        # Just read 1KB to verify
+                        with rf.open(first_file) as f:
+                            f.read(1024)
                         self.logger.info(f"✅ Password correct: '{pwd_display}'")
                         return password
 
