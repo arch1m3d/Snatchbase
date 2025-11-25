@@ -115,11 +115,14 @@ class ZipIngestionService:
 
             try:
                 # Group files by device
+                self.logger.info(f"📊 Analyzing archive structure...")
                 device_map, structure_info = self.grouper.group_by_device(zip_file)
+                self.logger.info(f"📊 Found {len(device_map)} device(s) in archive")
                 
                 # Handle nested ZIP files (ZIP containing ZIPs)
                 if structure_info.structure_type == "nested":
-                    self.logger.info(f"📦 Detected nested ZIP structure - extracting inner ZIPs...")
+                    self.logger.info(f"📦 Detected nested ZIP structure")
+                    self.logger.info(f"📦 This may take a while - extracting and processing inner ZIPs...")
                     return self._process_nested_zips(zip_file, zip_path, upload_batch, upload, db)
                 
                 self.logger.info(f"📊 Found {len(device_map)} devices in ZIP")
@@ -225,32 +228,37 @@ class ZipIngestionService:
                     inner_zip_name = Path(inner_zip_entry.filename).name
                     device_names_found.append(inner_zip_name)
                     inner_zip_path = Path(temp_dir) / inner_zip_name
-                    
-                    # Try to extract with password support
+
+                    # Extract inner ZIP
+                    file_size_mb = inner_zip_entry.file_size / 1024 / 1024
+                    self.logger.info(f"📦 [{file_size_mb:.1f} MB] Extracting: {inner_zip_name}")
+
                     try:
                         with open(inner_zip_path, 'wb') as f:
                             f.write(outer_zip.read(inner_zip_entry))
+                        self.logger.info(f"   ✓ Extracted to temp directory")
                     except RuntimeError as e:
                         if "password" in str(e).lower():
-                            self.logger.error(f"❌ Inner ZIP is password protected: {inner_zip_name}")
+                            self.logger.error(f"   ❌ Inner ZIP is password protected")
                             continue
                         raise
 
-                    self.logger.info(f"📦 Extracting inner ZIP: {inner_zip_name}")
-
                     # Process the inner ZIP with password support
+                    self.logger.info(f"📂 Opening inner archive...")
                     try:
                         inner_archive, inner_password = self.archive_handler.open_archive(inner_zip_path)
                         if inner_password:
-                            self.logger.info(f"🔓 Inner ZIP opened with password: {inner_password}")
+                            self.logger.info(f"   🔓 Opened with password")
                     except Exception as e:
-                        self.logger.error(f"❌ Could not open inner ZIP {inner_zip_name}: {e}")
+                        self.logger.error(f"   ❌ Could not open: {e}")
                         continue
 
                     try:
                         inner_zip_file = inner_archive
                         # Group files by device within this inner ZIP
+                        self.logger.info(f"📊 Analyzing inner archive structure...")
                         device_map, _ = self.grouper.group_by_device(inner_zip_file)
+                        self.logger.info(f"   Found {len(device_map)} device(s)")
                         
                         # Check for existing devices
                         existing_hashes = self._get_existing_device_hashes(db, list(device_map.keys()))
