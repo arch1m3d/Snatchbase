@@ -1,12 +1,17 @@
 import { useEffect, useState } from 'react'
+import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import {
   Database,
   Globe,
   Search,
+  TrendingUp,
+  AlertTriangle,
   Server,
+  Activity,
   Key,
   ArrowRight,
+  Zap,
   Archive,
   CheckCircle,
   XCircle,
@@ -57,67 +62,97 @@ export default function DashboardSimple() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-void">
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-dark-900 via-dark-800 to-dark-900">
         <div className="text-center">
-          <div className="h-1 w-32 bg-neon-cyan animate-glow mx-auto mb-4" />
-          <p className="text-gray-400 font-light">loading...</p>
+          <Activity className="h-12 w-12 text-primary-500 animate-pulse mx-auto" />
+          <p className="mt-4 text-dark-400">Loading...</p>
         </div>
       </div>
     )
   }
 
+  const quickActions = [
+    {
+      title: 'Search Credentials',
+      description: 'Find credentials by domain, username, or browser',
+      icon: Search,
+      color: 'from-blue-500 to-cyan-500',
+      action: () => navigate('/search')
+    },
+    {
+      title: 'Browse Devices',
+      description: 'View all infected devices and their data',
+      icon: Server,
+      color: 'from-purple-500 to-pink-500',
+      action: () => navigate('/devices')
+    },
+    {
+      title: 'View Analytics',
+      description: 'Explore detailed statistics and insights',
+      icon: TrendingUp,
+      color: 'from-green-500 to-emerald-500',
+      action: () => navigate('/analytics')
+    }
+  ]
+
   const statCards = [
     {
-      label: 'credentials',
-      value: stats?.total_credentials || 0,
+      title: 'Total Credentials',
+      value: stats?.total_credentials.toLocaleString() || '0',
       icon: Key,
-      color: 'neon-cyan'
+      color: 'text-blue-400'
     },
     {
-      label: 'devices',
-      value: stats?.total_systems || 0,
+      title: 'Infected Devices',
+      value: stats?.total_systems.toLocaleString() || '0',
       icon: Server,
-      color: 'neon-green'
+      color: 'text-purple-400'
     },
     {
-      label: 'domains',
-      value: stats?.unique_domains || 0,
+      title: 'Unique Domains',
+      value: stats?.unique_domains.toLocaleString() || '0',
       icon: Globe,
-      color: 'neon-purple'
+      color: 'text-green-400'
     },
     {
-      label: 'uploads',
-      value: stats?.total_uploads || 0,
-      icon: Database,
-      color: 'neon-pink'
+      title: 'Unique Stealers',
+      value: stats?.unique_stealers.toLocaleString() || '0',
+      icon: AlertTriangle,
+      color: 'text-red-400'
     }
   ]
 
   return (
-    <div className="min-h-screen bg-void p-8 font-light">
+    <div className="min-h-screen bg-gradient-to-br from-dark-900 via-dark-800 to-dark-900 p-8">
       {/* Header */}
-      <div className="mb-12 border-b border-gray-800 pb-6">
-        <h1 className="text-4xl font-extralight text-white tracking-wider mb-2">
-          snatchbase
+      <div className="mb-12">
+        <h1 className="text-5xl font-bold text-white mb-3 flex items-center gap-4">
+          <Database className="h-12 w-12 text-primary-500" />
+          Welcome to Snatchbase
         </h1>
-        <p className="text-gray-400 text-sm font-light">osint intelligence platform</p>
+        <p className="text-xl text-dark-400">
+          Your comprehensive stealer log management platform
+        </p>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-4 gap-4 mb-12">
+      {/* Stats Overview */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
         {statCards.map((stat) => (
           <div
-            key={stat.label}
-            className="bg-void-light border border-gray-800 p-6 hover:border-neon-cyan transition-all cursor-pointer group"
+            key={stat.title}
+            onClick={() => {
+              if (stat.title === 'Total Credentials') navigate('/search')
+              else if (stat.title === 'Infected Devices') navigate('/devices')
+              else if (stat.title === 'Unique Domains' || stat.title === 'Unique Stealers') navigate('/analytics')
+            }}
+            className="card bg-dark-800/50 backdrop-blur-xl border border-dark-700/50 p-6 rounded-2xl hover:border-primary-500/50 transition-all cursor-pointer"
           >
-            <div className="flex items-start justify-between mb-4">
-              <span className="text-gray-500 text-xs uppercase tracking-widest font-light">
-                {stat.label}
-              </span>
-              <stat.icon className={`h-4 w-4 text-${stat.color} opacity-50 group-hover:opacity-100 transition-opacity`} />
-            </div>
-            <div className={`text-3xl font-thin text-${stat.color}`}>
-              {stat.value.toLocaleString()}
+            <div className="flex items-center gap-4 mb-3">
+              <stat.icon className={`h-8 w-8 ${stat.color}`} />
+              <div>
+                <p className="text-sm text-dark-400">{stat.title}</p>
+                <p className="text-3xl font-bold text-white">{stat.value}</p>
+              </div>
             </div>
           </div>
         ))}
@@ -125,78 +160,78 @@ export default function DashboardSimple() {
 
       {/* Quick Actions */}
       <div className="mb-12">
-        <h2 className="text-gray-500 text-xs uppercase tracking-widest mb-4 font-light">quick access</h2>
-
-        <div className="grid grid-cols-3 gap-4">
-          <button
-            onClick={() => navigate('/search')}
-            className="bg-void-light border border-gray-800 p-6 text-left hover:border-neon-cyan transition-all group"
-          >
-            <Search className="h-5 w-5 text-neon-cyan mb-3 opacity-70 group-hover:opacity-100" />
-            <div className="text-white font-light mb-1">search</div>
-            <div className="text-gray-500 text-xs font-light">find credentials & data</div>
-          </button>
-
-          <button
-            onClick={() => navigate('/devices')}
-            className="bg-void-light border border-gray-800 p-6 text-left hover:border-neon-green transition-all group"
-          >
-            <Server className="h-5 w-5 text-neon-green mb-3 opacity-70 group-hover:opacity-100" />
-            <div className="text-white font-light mb-1">devices</div>
-            <div className="text-gray-500 text-xs font-light">infected systems</div>
-          </button>
-
-          <button
-            onClick={() => navigate('/analytics')}
-            className="bg-void-light border border-gray-800 p-6 text-left hover:border-neon-purple transition-all group"
-          >
-            <Database className="h-5 w-5 text-neon-purple mb-3 opacity-70 group-hover:opacity-100" />
-            <div className="text-white font-light mb-1">analytics</div>
-            <div className="text-gray-500 text-xs font-light">insights & stats</div>
-          </button>
+        <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
+          <Zap className="h-6 w-6 text-primary-500" />
+          Quick Actions
+        </h2>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {quickActions.map((action) => (
+            <button
+              key={action.title}
+              onClick={action.action}
+              className="group relative overflow-hidden"
+            >
+              <div className="card bg-dark-800/50 backdrop-blur-xl border border-dark-700/50 p-8 rounded-2xl hover:border-primary-500/50 transition-all text-left">
+                <div className={`p-4 rounded-xl bg-gradient-to-br ${action.color} inline-block mb-4 group-hover:scale-110 transition-transform`}>
+                  <action.icon className="h-8 w-8 text-white" />
+                </div>
+                
+                <h3 className="text-xl font-bold text-white mb-2 group-hover:text-primary-400 transition-colors">
+                  {action.title}
+                </h3>
+                <p className="text-dark-400 mb-4">{action.description}</p>
+                
+                <div className="flex items-center text-primary-400 font-medium">
+                  <span>Get Started</span>
+                  <ArrowRight className="h-4 w-4 ml-2 group-hover:translate-x-2 transition-transform" />
+                </div>
+              </div>
+            </button>
+          ))}
         </div>
       </div>
 
       {/* Recent Devices */}
-      <div className="mb-12">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-gray-500 text-xs uppercase tracking-widest font-light">recent devices</h2>
+      <div>
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+            <Server className="h-6 w-6 text-purple-400" />
+            Recent Devices
+          </h2>
           <button
             onClick={() => navigate('/devices')}
-            className="text-neon-cyan text-xs hover:underline font-light flex items-center gap-1"
+            className="text-primary-400 hover:text-primary-300 transition-colors flex items-center gap-1"
           >
-            view all
-            <ArrowRight className="h-3 w-3" />
+            View All
+            <ArrowRight className="h-4 w-4" />
           </button>
         </div>
-
-        <div className="space-y-2">
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {recentDevices.map((device) => (
             <div
               key={device.device_id}
               onClick={() => navigate(`/device/${device.id}`)}
-              className="bg-void-light border border-gray-800 p-4 hover:border-neon-green transition-all cursor-pointer group flex items-center justify-between"
+              className="card bg-dark-800/50 backdrop-blur-xl border border-dark-700/50 p-5 rounded-xl hover:border-primary-500/50 transition-all cursor-pointer group"
             >
-              <div className="flex items-center gap-4 flex-1 min-w-0">
-                <div className="h-1 w-1 bg-neon-green rounded-full group-hover:shadow-neon-green" />
-                <div className="flex-1 min-w-0">
-                  <div className="text-white font-light text-sm truncate">
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <Server className="h-5 w-5 text-primary-400 flex-shrink-0" />
+                  <h3 className="font-semibold text-white group-hover:text-primary-400 transition-colors truncate max-w-[250px]" title={device.hostname || device.device_name}>
                     {device.hostname || device.device_name}
-                  </div>
-                  <div className="text-gray-500 text-xs font-light">
-                    {device.ip_address || 'unknown ip'}
-                  </div>
+                  </h3>
                 </div>
               </div>
-
-              <div className="flex gap-6 text-xs">
-                <div className="text-right">
-                  <div className="text-gray-500 font-light">creds</div>
-                  <div className="text-neon-cyan font-light">{device.total_credentials}</div>
+              
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div>
+                  <p className="text-dark-400">Credentials</p>
+                  <p className="text-white font-bold">{device.total_credentials.toLocaleString()}</p>
                 </div>
-                <div className="text-right">
-                  <div className="text-gray-500 font-light">domains</div>
-                  <div className="text-neon-purple font-light">{device.total_domains}</div>
+                <div>
+                  <p className="text-dark-400">Domains</p>
+                  <p className="text-white font-bold">{device.total_domains.toLocaleString()}</p>
                 </div>
               </div>
             </div>
@@ -205,73 +240,78 @@ export default function DashboardSimple() {
       </div>
 
       {/* Recent Archives */}
-      <div>
-        <h2 className="text-gray-500 text-xs uppercase tracking-widest mb-4 font-light">recent ingestions</h2>
+      <div className="mt-12">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+            <Archive className="h-6 w-6 text-green-400" />
+            Recent Archives
+          </h2>
+        </div>
 
-        {recentUploads.length === 0 ? (
-          <div className="bg-void-light border border-gray-800 p-12 text-center">
-            <Archive className="h-8 w-8 text-gray-700 mx-auto mb-3" />
-            <p className="text-gray-500 text-sm font-light">no archives processed</p>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {recentUploads.map((upload) => (
+        <div className="space-y-3">
+          {recentUploads.length === 0 ? (
+            <div className="card bg-dark-800/50 backdrop-blur-xl border border-dark-700/50 p-8 rounded-xl text-center">
+              <Archive className="h-12 w-12 text-dark-600 mx-auto mb-3" />
+              <p className="text-dark-400">No archives ingested yet</p>
+            </div>
+          ) : (
+            recentUploads.map((upload) => (
               <div
                 key={upload.id}
-                className="bg-void-light border border-gray-800 p-4 hover:border-neon-pink transition-all group"
+                className="card bg-dark-800/50 backdrop-blur-xl border border-dark-700/50 p-5 rounded-xl hover:border-primary-500/50 transition-all"
               >
                 <div className="flex items-start justify-between gap-4">
-                  <div className="flex items-start gap-4 flex-1 min-w-0">
-                    <Archive className="h-4 w-4 text-neon-pink mt-1 flex-shrink-0 opacity-70 group-hover:opacity-100" />
+                  <div className="flex items-start gap-3 flex-1 min-w-0">
+                    <Archive className="h-5 w-5 text-green-400 flex-shrink-0 mt-1" />
                     <div className="flex-1 min-w-0">
-                      <div className="text-white font-light text-sm mb-1 truncate" title={upload.filename}>
+                      <h3 className="font-semibold text-white truncate mb-1" title={upload.filename}>
                         {upload.filename}
-                      </div>
-                      <div className="flex items-center gap-3 text-xs">
-                        <span className="text-gray-500 font-light">
+                      </h3>
+                      <div className="flex items-center gap-4 text-sm text-dark-400">
+                        <span>
                           {new Date(upload.created_at).toLocaleString()}
                         </span>
                         {upload.status === 'completed' && (
-                          <span className="flex items-center gap-1 text-neon-green">
-                            <CheckCircle className="h-3 w-3" />
-                            <span className="font-light">completed</span>
+                          <span className="flex items-center gap-1 text-green-400">
+                            <CheckCircle className="h-4 w-4" />
+                            Completed
                           </span>
                         )}
                         {upload.status === 'failed' && (
-                          <span className="flex items-center gap-1 text-neon-pink">
-                            <XCircle className="h-3 w-3" />
-                            <span className="font-light">failed</span>
+                          <span className="flex items-center gap-1 text-red-400">
+                            <XCircle className="h-4 w-4" />
+                            Failed
                           </span>
                         )}
                         {upload.status === 'processing' && (
-                          <span className="flex items-center gap-1 text-neon-cyan">
-                            <Clock className="h-3 w-3" />
-                            <span className="font-light">processing</span>
+                          <span className="flex items-center gap-1 text-yellow-400">
+                            <Clock className="h-4 w-4" />
+                            Processing
                           </span>
                         )}
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex gap-6 text-xs flex-shrink-0">
-                    <div className="text-right">
-                      <div className="text-gray-500 font-light">devices</div>
-                      <div className="text-white font-light">{upload.devices_processed}</div>
+                  <div className="grid grid-cols-3 gap-4 text-sm flex-shrink-0">
+                    <div className="text-center">
+                      <p className="text-dark-400 mb-1">Devices</p>
+                      <p className="text-white font-bold">{upload.devices_processed.toLocaleString()}</p>
                     </div>
-                    <div className="text-right">
-                      <div className="text-gray-500 font-light">creds</div>
-                      <div className="text-neon-cyan font-light">{upload.total_credentials}</div>
+                    <div className="text-center">
+                      <p className="text-dark-400 mb-1">Credentials</p>
+                      <p className="text-white font-bold">{upload.total_credentials.toLocaleString()}</p>
                     </div>
-                    <div className="text-right">
-                      <div className="text-gray-500 font-light">files</div>
-                      <div className="text-gray-400 font-light">{upload.total_files}</div>
+                    <div className="text-center">
+                      <p className="text-dark-400 mb-1">Files</p>
+                      <p className="text-white font-bold">{upload.total_files.toLocaleString()}</p>
                     </div>
                   </div>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
+            ))
+          )}
+        </div>
       </div>
     </div>
   )
