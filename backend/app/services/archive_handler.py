@@ -29,25 +29,6 @@ class SmartArchiveHandler:
     Handles both ZIP and RAR archives with smart password detection
     """
 
-    # Common passwords for stealer logs (in order of likelihood)
-    COMMON_PASSWORDS = [
-        'infected',
-        '1234',
-        'password',
-        'malware',
-        '123',
-        '12345',
-        'stealer',
-        'logs',
-        '1',
-        'redline',
-        'raccoon',
-        'vidar',
-        'aurora',
-        'virus',
-        'hack',
-    ]
-
     def __init__(self, logger: Optional[logging.Logger] = None, custom_passwords: Optional[List[str]] = None):
         self.logger = logger or logging.getLogger(__name__)
         self.custom_passwords = custom_passwords or []
@@ -85,35 +66,20 @@ class SmartArchiveHandler:
 
     def extract_password_from_filename(self, filename: str) -> List[str]:
         """
-        Extract potential passwords from filename
+        Extract password from filename using Telegram channel pattern
 
-        Common patterns:
-        - logs_password123.rar
-        - stealer_infected.zip
-        - redline[1234].rar
-        - vidar_pass=infected.rar
+        Pattern: @ChannelName.zip → https://t.me/ChannelName
         """
         passwords = []
 
-        # Pattern 1: _password or _pass followed by text
-        match = re.search(r'[_\-](pass|password|pw)[_\-=:]?([a-zA-Z0-9]+)', filename, re.I)
-        if match:
-            passwords.append(match.group(2))
-
-        # Pattern 2: text in brackets [password]
-        match = re.search(r'\[([a-zA-Z0-9]+)\]', filename)
-        if match:
-            passwords.append(match.group(1))
-
-        # Pattern 3: text in parentheses (password)
-        match = re.search(r'\(([a-zA-Z0-9]+)\)', filename)
-        if match:
-            passwords.append(match.group(1))
-
-        # Pattern 4: Common password keywords in filename
-        for keyword in ['infected', 'malware', 'virus', 'stealer']:
-            if keyword in filename.lower():
-                passwords.append(keyword)
+        # If filename starts with @, convert to Telegram URL
+        if filename.startswith('@'):
+            # Remove @ and .zip/.rar extension
+            channel_name = filename[1:]  # Remove @
+            channel_name = re.sub(r'\.(zip|rar|7z)$', '', channel_name, flags=re.I)
+            telegram_url = f"https://t.me/{channel_name}"
+            passwords.append(telegram_url)
+            self.logger.info(f"📱 Detected Telegram channel pattern: {telegram_url}")
 
         return passwords
 
@@ -122,22 +88,18 @@ class SmartArchiveHandler:
         Try to find the correct password for an encrypted archive
 
         Strategy:
-        1. Try passwords from filename
-        2. Try custom passwords (user-provided)
-        3. Try common stealer log passwords
+        1. Try Telegram channel URL from filename (if starts with @)
+        2. Try custom passwords from passwords.txt
         """
         # Build password list
         passwords_to_try = []
 
-        # 1. Filename-based passwords (highest priority)
+        # 1. Telegram channel URL from filename (if applicable)
         filename_passwords = self.extract_password_from_filename(archive_path.name)
         passwords_to_try.extend(filename_passwords)
 
-        # 2. Custom passwords
+        # 2. Custom passwords from passwords.txt
         passwords_to_try.extend(self.custom_passwords)
-
-        # 3. Common passwords
-        passwords_to_try.extend(self.COMMON_PASSWORDS)
 
         # Remove duplicates while preserving order
         seen = set()
