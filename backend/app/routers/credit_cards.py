@@ -9,8 +9,10 @@ from typing import List, Optional
 
 from app.database import get_db
 from app.models import CreditCard, Device
+from app.services.search_service import SearchService
 
 router = APIRouter()
+search_service = SearchService()
 
 
 @router.get("/credit-cards")
@@ -37,9 +39,12 @@ async def get_credit_cards(
     
     if card_brand:
         query = query.filter(CreditCard.card_brand == card_brand)
-    
-    total = query.count()
+
+    # Fetch cards first
     cards = query.order_by(CreditCard.created_at.desc()).limit(limit).offset(offset).all()
+
+    # Estimate count instead of expensive COUNT() query
+    total = search_service.estimate_count(query, len(cards), limit, offset)
     
     return {
         "results": [
@@ -97,8 +102,12 @@ async def get_device_credit_cards(
         return {"error": "Device not found"}, 404
     
     query = db.query(CreditCard).filter(CreditCard.device_id == device_id)
-    total = query.count()
+
+    # Fetch cards first
     cards = query.order_by(CreditCard.created_at.desc()).limit(limit).offset(offset).all()
+
+    # Estimate count instead of expensive COUNT() query
+    total = search_service.estimate_count(query, len(cards), limit, offset)
     
     return {
         "device_id": device_id,

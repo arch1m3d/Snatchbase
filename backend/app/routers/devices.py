@@ -93,11 +93,14 @@ async def get_device_credentials(
     device = db.query(Device).filter(Device.id == device_id).first()
     if not device:
         raise HTTPException(status_code=404, detail="Device not found")
-    
+
+    # Use cached count from device model (MUCH faster than query.count())
+    total = device.total_credentials
+
     # Get credentials using the device_id string
-    query = db.query(Credential).filter(Credential.device_id == device.device_id)
-    total = query.count()
-    credentials = query.order_by(Credential.created_at.desc()).offset(offset).limit(limit).all()
+    credentials = db.query(Credential).filter(
+        Credential.device_id == device.device_id
+    ).order_by(Credential.created_at.desc()).offset(offset).limit(limit).all()
     
     return {
         "results": [CredentialResponse.from_orm(c) for c in credentials],
@@ -119,11 +122,14 @@ async def get_device_files(
     device = db.query(Device).filter(Device.id == device_id).first()
     if not device:
         raise HTTPException(status_code=404, detail="Device not found")
-    
+
+    # Use cached count from device model (MUCH faster than query.count())
+    total = device.total_files
+
     # Get files using the device_id string
-    query = db.query(File).filter(File.device_id == device.device_id)
-    total = query.count()
-    files = query.offset(offset).limit(limit).all()
+    files = db.query(File).filter(
+        File.device_id == device.device_id
+    ).offset(offset).limit(limit).all()
     
     return {
         "results": [
@@ -156,11 +162,14 @@ async def get_device_software(
     device = search_service.get_device_by_id(db, device_id)
     if not device:
         raise HTTPException(status_code=404, detail="Device not found")
-    
-    # Get software
-    query = db.query(Software).filter(Software.device_id == device_id)
-    total = query.count()
-    software = query.offset(offset).limit(limit).all()
+
+    # Get software (limit results, skip count for performance)
+    software = db.query(Software).filter(
+        Software.device_id == device_id
+    ).offset(offset).limit(limit).all()
+
+    # Return -1 for total to indicate "unknown" (avoids slow count)
+    total = -1
     
     return {
         "results": [

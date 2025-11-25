@@ -10,8 +10,10 @@ from decimal import Decimal
 from app.database import get_db
 from app.models import Wallet, Device
 from app.schemas import WalletResponse, WalletStats
+from app.services.search_service import SearchService
 
 router = APIRouter()
+search_service = SearchService()
 
 
 @router.get("/devices/{device_id}/wallets", response_model=List[WalletResponse])
@@ -54,10 +56,10 @@ async def search_wallets(
     
     if min_balance is not None:
         query = query.filter(Wallet.balance >= Decimal(str(min_balance)))
-    
-    total = query.count()
+
+    # Fetch wallets (skip count for performance)
     wallets = query.order_by(Wallet.balance.desc()).offset(skip).limit(limit).all()
-    
+
     return wallets
 
 

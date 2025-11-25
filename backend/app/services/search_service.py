@@ -1,12 +1,27 @@
 """Service for searching and filtering stealer log data"""
 from sqlalchemy.orm import Session
-from sqlalchemy import func, or_, and_, desc
+from sqlalchemy import func, or_, and_, desc, select
 from typing import List, Optional, Dict, Any
 from app.models import Credential, System, Upload, Device, Software, PasswordStat
 from app.schemas import CredentialResponse, SystemResponse, StatisticsResponse, DomainStatistic, CountryStatistic, StealerStatistic
 
 class SearchService:
     """Service for searching stealer log data"""
+
+    @staticmethod
+    def estimate_count(query, actual_results: int, limit: int, offset: int) -> int:
+        """
+        Estimate total count without expensive COUNT() query.
+        Returns a reasonable estimate for pagination without full table scan.
+        """
+        # If we got fewer results than the limit, we know the exact total
+        if actual_results < limit:
+            return offset + actual_results
+
+        # Otherwise, we have at least offset + limit results
+        # Return offset + limit to show there's at least one more page
+        # Frontend can paginate forward but won't show exact total
+        return offset + limit + 1  # +1 indicates "more pages available"
     
     def search_credentials(
         self,
@@ -109,16 +124,16 @@ class SearchService:
         # Apply all filters
         if filters:
             base_query = base_query.filter(and_(*filters))
-        
-        # Get total count
-        total = base_query.count()
-        
+
         # Apply ordering and pagination for results
         credentials = base_query.order_by(desc(Credential.created_at)).offset(offset).limit(limit).all()
-        
+
+        # Estimate count instead of expensive COUNT() query
+        total = self.estimate_count(base_query, len(credentials), limit, offset)
+
         # Enrich with duplicate information
         enriched_credentials = self._enrich_credentials_with_duplicates(db, credentials)
-        
+
         return enriched_credentials, total
     
     def search_systems(
@@ -315,10 +330,13 @@ class SearchService:
         if query:
             search_filter = Device.device_name.ilike(f"%{query}%")
             base_query = base_query.filter(search_filter)
-        
-        total = base_query.count()
+
+        # Fetch devices first
         devices = base_query.order_by(desc(Device.created_at)).offset(offset).limit(limit).all()
-        
+
+        # Estimate count instead of expensive COUNT() query
+        total = self.estimate_count(base_query, len(devices), limit, offset)
+
         return devices, total
     
     def get_device_by_id(self, db: Session, device_id: str) -> Optional[Device]:
