@@ -9,7 +9,7 @@ from typing import Optional, Dict, List
 from sqlalchemy.orm import Session
 from collections import defaultdict
 
-from app.models import Device, Credential, File, PasswordStat, Software, Upload
+from app.models import Device, Credential, File, PasswordStat, Software, Upload, Wallet
 from app.services.zip_processor import (
     ZipStructureAnalyzer, 
     ZipFileGrouper, 
@@ -19,6 +19,8 @@ from app.services.zip_processor import (
 from app.services.password_parser import PasswordFileParser, escape_password
 from app.services.software_parser import SoftwareFileParser
 from app.services.system_parser import SystemFileParser
+from app.services.wallet_parser import WalletParser
+from app.services.cc_integration import process_credit_cards_for_device
 
 
 def sanitize_text(text: Optional[str]) -> Optional[str]:
@@ -68,6 +70,7 @@ class ZipIngestionService:
         self.password_parser = PasswordFileParser()
         self.software_parser = SoftwareFileParser()
         self.system_parser = SystemFileParser()
+        self.wallet_parser = WalletParser()
     
     def process_zip_file(self, zip_path: Path, db: Session) -> Dict:
         """Process a ZIP file and ingest all data"""
@@ -90,6 +93,11 @@ class ZipIngestionService:
             with zipfile.ZipFile(zip_path, 'r') as zip_file:
                 # Group files by device
                 device_map, structure_info = self.grouper.group_by_device(zip_file)
+                
+                # Handle nested ZIP files (ZIP containing ZIPs)
+                if structure_info.structure_type == "nested":
+                    self.logger.info(f"📦 Detected nested ZIP structure - extracting inner ZIPs...")
+                    return self._process_nested_zips(zip_file, zip_path, upload_batch, upload, db)
                 
                 self.logger.info(f"📊 Found {len(device_map)} devices in ZIP")
                 
@@ -161,6 +169,115 @@ class ZipIngestionService:
             upload.error_message = str(e)
             db.commit()
             raise
+    
+    def _process_nested_zips(self, outer_zip: zipfile.ZipFile, zip_path: Path, upload_batch: str, upload: Upload, db: Session) -> Dict:
+        """Process a ZIP file containing inner ZIP files"""
+        import tempfile
+        import shutil
+        
+        temp_dir = None
+        try:
+            # Create temporary directory for extracting inner ZIPs
+            temp_dir = tempfile.mkdtemp(prefix="snatchbase_nested_")
+            self.logger.info(f"📂 Created temp directory: {temp_dir}")
+            
+            # Find all .zip files in the outer ZIP
+            inner_zips = [entry for entry in outer_zip.filelist if entry.filename.lower().endswith('.zip') and not entry.is_dir()]
+            self.logger.info(f"📦 Found {len(inner_zips)} inner ZIP files")
+            
+            devices_processed = 0
+            devices_skipped = 0
+            total_credentials = 0
+            total_files = 0
+            device_names_found = []
+            
+            # Process each inner ZIP
+            for inner_zip_entry in inner_zips:
+                try:
+                    # Extract inner ZIP to temp directory
+                    inner_zip_name = Path(inner_zip_entry.filename).name
+                    device_names_found.append(inner_zip_name)
+                    inner_zip_path = Path(temp_dir) / inner_zip_name
+                    
+                    with open(inner_zip_path, 'wb') as f:
+                        f.write(outer_zip.read(inner_zip_entry))
+                    
+                    self.logger.info(f"📦 Extracting inner ZIP: {inner_zip_name}")
+                    
+                    # Process the inner ZIP as a regular device ZIP
+                    with zipfile.ZipFile(inner_zip_path, 'r') as inner_zip_file:
+                        # Group files by device within this inner ZIP
+                        device_map, _ = self.grouper.group_by_device(inner_zip_file)
+                        
+                        # Check for existing devices
+                        existing_hashes = self._get_existing_device_hashes(db, list(device_map.keys()))
+                        
+                        # Process each device in the inner ZIP
+                        for device_name, files in device_map.items():
+                            device_hash = compute_device_hash(device_name)
+                            
+                            # Skip if device already exists
+                            if device_hash in existing_hashes:
+                                self.logger.info(f"⏭️ Skipping duplicate device: {device_name} (from {inner_zip_name})")
+                                devices_skipped += 1
+                                continue
+                            
+                            self.logger.info(f"🖥️ Processing device: {device_name} from {inner_zip_name} ({len(files)} files)")
+                            
+                            # Process device
+                            device_stats = self._process_device(
+                                db=db,
+                                device_name=device_name,
+                                device_hash=device_hash,
+                                files=files,
+                                upload_batch=upload_batch,
+                                zip_file=inner_zip_file
+                            )
+                            
+                            devices_processed += 1
+                            total_credentials += device_stats["credentials"]
+                            total_files += device_stats["files"]
+                            
+                            # Commit after each device
+                            db.commit()
+                            self.logger.info(f"✅ Device processed: {device_name}")
+                    
+                    # Delete the inner ZIP after processing
+                    inner_zip_path.unlink()
+                    
+                except Exception as e:
+                    self.logger.error(f"❌ Error processing inner ZIP {inner_zip_entry.filename}: {e}", exc_info=True)
+                    continue
+            
+            # Update upload record
+            upload.status = "completed"
+            upload.devices_found = len(device_names_found)
+            upload.devices_processed = devices_processed
+            upload.devices_skipped = devices_skipped
+            upload.total_credentials = total_credentials
+            upload.total_files = total_files
+            upload.completed_at = datetime.now()
+            db.commit()
+            
+            result = {
+                "success": True,
+                "upload_batch": upload_batch,
+                "devices_found": len(device_names_found),
+                "devices_processed": devices_processed,
+                "devices_skipped": devices_skipped,
+                "total_credentials": total_credentials,
+                "total_files": total_files,
+                "structure_type": "nested",
+            }
+            
+            self.logger.info(f"✅ Nested ZIP processing completed: {result}")
+            return result
+            
+        finally:
+            # Clean up temp directory
+            if temp_dir and Path(temp_dir).exists():
+                shutil.rmtree(temp_dir)
+                self.logger.info(f"🗑️ Cleaned up temp directory")
     
     def _get_existing_device_hashes(self, db: Session, device_names: List[str]) -> set:
         """Get hashes of existing devices to avoid duplicates"""
@@ -236,13 +353,21 @@ class ZipIngestionService:
             except Exception as e:
                 self.logger.error(f"❌ Error parsing system file: {e}")
         
+        # Debug: Log all .txt files in the device
+        txt_files = [(path, Path(path).name) for path, entry in files if Path(path).name.lower().endswith('.txt') and not entry.is_dir()]
+        if txt_files:
+            self.logger.info(f"📄 Found {len(txt_files)} .txt files in device: {[name for _, name in txt_files[:10]]}")
+        
         # Find password files
         password_files = [
             (path, entry) for path, entry in files
             if self.password_parser.is_password_file(Path(path).name) and not entry.is_dir()
         ]
         
-        self.logger.info(f"🔍 Found {len(password_files)} password files")
+        if password_files:
+            self.logger.info(f"🔍 Found {len(password_files)} password files: {[Path(p).name for p, _ in password_files]}")
+        else:
+            self.logger.info(f"🔍 Found {len(password_files)} password files")
         
         # Parse credentials
         all_credentials = []
@@ -393,6 +518,59 @@ class ZipIngestionService:
                 self.logger.error(f"❌ Error saving software: {e}")
                 continue
         
+        # Parse and save wallets
+        self.logger.info(f"🔍 Searching for wallet files")
+        wallet_files = [
+            (path, entry) for path, entry in files
+            if self.wallet_parser.is_wallet_file(Path(path).name) and not entry.is_dir()
+        ]
+        
+        self.logger.info(f"💰 Found {len(wallet_files)} wallet files")
+        all_wallets = []
+        
+        for path, entry in wallet_files:
+            try:
+                content = zip_file.read(entry).decode('utf-8', errors='ignore')
+                wallets = self.wallet_parser.parse_wallet_file(content, Path(path).name)
+                
+                for wallet in wallets:
+                    # Hash sensitive data
+                    from hashlib import sha256
+                    mnemonic_hash = sha256(wallet.mnemonic.encode()).hexdigest() if wallet.mnemonic else None
+                    private_key_hash = sha256(wallet.private_key.encode()).hexdigest() if wallet.private_key else None
+                    
+                    all_wallets.append({
+                        "wallet_type": wallet.wallet_type,
+                        "address": wallet.address,
+                        "mnemonic_hash": mnemonic_hash,
+                        "private_key_hash": private_key_hash,
+                        "password": wallet.password,
+                        "path": wallet.path or path,
+                        "source_file": wallet.source_file or Path(path).name,
+                    })
+                
+            except Exception as e:
+                self.logger.error(f"❌ Error parsing wallet file {path}: {e}")
+                continue
+        
+        self.logger.info(f"💾 Saving {len(all_wallets)} wallets")
+        for wallet_data in all_wallets:
+            try:
+                wallet = Wallet(
+                    device_id=device.id,  # Use device.id (integer PK) not device_id (string)
+                    wallet_type=sanitize_text(wallet_data["wallet_type"]),
+                    address=sanitize_text(wallet_data.get("address")),
+                    mnemonic_hash=wallet_data.get("mnemonic_hash"),
+                    private_key_hash=wallet_data.get("private_key_hash"),
+                    password=sanitize_text(wallet_data.get("password")),
+                    path=sanitize_text(wallet_data.get("path")),
+                    source_file=sanitize_text(wallet_data.get("source_file")),
+                )
+                db.add(wallet)
+            except Exception as e:
+                self.logger.error(f"❌ Error saving wallet: {e}")
+                continue
+        
         # Save file tree (text files only)
         self.logger.info(f"💾 Saving file tree ({len(files)} entries)")
         file_count = 0
@@ -433,8 +611,40 @@ class ZipIngestionService:
                 self.logger.error(f"❌ Error saving file {path}: {e}")
                 continue
         
+        # Extract temporary directory for CC parsing
+        # We need to extract the device files to a temp dir for the CC parser
+        import tempfile
+        import shutil
+        
+        cc_count = 0
+        try:
+            with tempfile.TemporaryDirectory() as temp_dir:
+                # Extract device files to temp directory
+                temp_path = Path(temp_dir) / device_name
+                temp_path.mkdir(parents=True, exist_ok=True)
+                
+                for path, entry in files:
+                    if not entry.is_dir():
+                        # Extract file
+                        extracted_path = temp_path / Path(path).name
+                        with zip_file.open(entry) as source, open(extracted_path, 'wb') as target:
+                            shutil.copyfileobj(source, target)
+                
+                # Process credit cards using the integration service
+                self.logger.info(f"💳 Processing credit cards for device {device_name}...")
+                credit_cards = process_credit_cards_for_device(str(temp_path), device_id, db)
+                cc_count = len(credit_cards)
+                
+                if cc_count > 0:
+                    self.logger.info(f"💳 Extracted {cc_count} credit cards")
+                    
+        except Exception as e:
+            self.logger.error(f"❌ Error processing credit cards: {e}", exc_info=True)
+        
         return {
             "credentials": len(all_credentials),
             "files": file_count,
             "software": len(all_software),
+            "wallets": len(all_wallets),
+            "credit_cards": cc_count,
         }

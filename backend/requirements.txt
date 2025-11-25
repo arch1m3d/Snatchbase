@@ -14,3 +14,18 @@ watchdog>=3.0.0
 
 # Utilities
 python-magic>=0.4.27
+
+# Telegram integration
+python-telegram-bot>=21.0
+
+# Wallet balance checking
+aiohttp>=3.9.0
+
+# Wallet address derivation (BIP39/BIP44)
+mnemonic>=0.21
+eth-account>=0.13.7
+web3>=7.14.0
+solders>=0.27.0
+
+# Note: MEGA downloads use system 'megatools' package
+# Install with: sudo apt install megatools

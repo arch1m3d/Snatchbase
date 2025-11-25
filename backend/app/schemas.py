@@ -17,6 +17,9 @@ class CredentialResponse(CredentialBase):
     id: int
     device_id: str
     created_at: datetime
+    is_duplicate: Optional[bool] = False
+    duplicate_count: Optional[int] = 0
+    duplicate_ids: Optional[List[int]] = []
     
     class Config:
         from_attributes = True
@@ -58,3 +61,32 @@ class CountryStatistic(BaseModel):
 class StealerStatistic(BaseModel):
     stealer_name: str
     count: int
+
+
+class WalletBase(BaseModel):
+    wallet_type: str
+    address: Optional[str] = None
+    password: Optional[str] = None
+    path: Optional[str] = None
+    source_file: Optional[str] = None
+
+
+class WalletResponse(WalletBase):
+    id: int
+    device_id: int
+    balance: Optional[float] = None
+    balance_usd: Optional[float] = None
+    has_balance: bool
+    last_checked: Optional[datetime] = None
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+
+class WalletStats(BaseModel):
+    total_wallets: int
+    wallets_with_balance: int
+    total_value_usd: float
+    breakdown_by_type: dict
+    top_wallets: List[dict]

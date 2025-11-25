@@ -39,11 +39,28 @@ class PasswordFileParser:
         "passwords.txt",
         "allpasswords_list.txt",
         "_allpasswords_list",
+        "password.txt",
+        "pass.txt",
+        "all_pass.txt",
+        "all pass.txt",
+        "password_list.txt",
+        "passlist.txt",
+        "creds.txt",
+        "credentials.txt",
+        "logins.txt",
+        "login.txt",
+        "accounts.txt",
     }
     
     def is_password_file(self, filename: str) -> bool:
         """Check if filename is a password file"""
-        return filename.lower() in self.PASSWORD_FILE_NAMES
+        filename_lower = filename.lower()
+        # Check exact match first
+        if filename_lower in self.PASSWORD_FILE_NAMES:
+            return True
+        # Check if filename contains common password keywords
+        password_keywords = ["password", "pass", "login", "cred", "account"]
+        return any(keyword in filename_lower for keyword in password_keywords) and filename_lower.endswith('.txt')
     
     def parse_password_file(self, content: str) -> PasswordFileStats:
         """Parse password file content and extract credentials"""
@@ -91,8 +108,8 @@ class PasswordFileParser:
         for line in lines:
             trimmed_line = line.strip()
             
-            # Empty line signals end of credential block
-            if not trimmed_line:
+            # Empty line or separator (=====, _____, -----) signals end of credential block
+            if not trimmed_line or (len(set(trimmed_line)) == 1 and trimmed_line[0] in "=_-|"):
                 if self._is_valid_credential(current_credential):
                     url_info = self._extract_url_info(current_credential["url"])
                     result.credentials.append(
@@ -123,20 +140,16 @@ class PasswordFileParser:
         # Add the last credential if valid
         if self._is_valid_credential(current_credential):
             url_info = self._extract_url_info(current_credential["url"])
-            url = current_credential["url"]
-            domain = url_info["domain"][:500] if url_info["domain"] else None
-            tld = url_info["tld"][:50] if url_info["tld"] else None
-            username = current_credential["username"][:500] if current_credential["username"] else None
-            password = current_credential["password"]
-            browser_name = current_credential.get("browser")[:200] if current_credential.get("browser") else None
-            result.credentials.append({
-                'url': url,
-                'domain': domain,
-                'tld': tld,
-                'username': username,
-                'password': password,
-                'browser': browser_name
-            })
+            result.credentials.append(
+                Credential(
+                    url=current_credential["url"],
+                    domain=url_info["domain"],
+                    tld=url_info["tld"],
+                    username=current_credential["username"],
+                    password=current_credential["password"],
+                    browser=current_credential.get("browser"),
+                )
+            )
         
         return result
     

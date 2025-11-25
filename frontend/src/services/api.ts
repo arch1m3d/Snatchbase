@@ -21,6 +21,7 @@ export interface Credential {
   browser?: string
   file_path?: string
   device_id?: string
+  stealer_name?: string
   created_at: string
 }
 
@@ -70,22 +71,22 @@ export interface UploadResponse {
 
 // API Functions
 export const fetchStatistics = async (): Promise<Statistics> => {
-  const response = await api.get('/stats')
+  const response = await api.get('/api/stats')
   return response.data
 }
 
 export const fetchDomainStats = async (limit = 20): Promise<DomainStatistic[]> => {
-  const response = await api.get(`/stats/domains?limit=${limit}`)
+  const response = await api.get(`/api/stats/domains?limit=${limit}`)
   return response.data
 }
 
 export const fetchCountryStats = async (limit = 20): Promise<CountryStatistic[]> => {
-  const response = await api.get(`/stats/countries?limit=${limit}`)
+  const response = await api.get(`/api/stats/countries?limit=${limit}`)
   return response.data
 }
 
 export const fetchStealerStats = async (limit = 20): Promise<StealerStatistic[]> => {
-  const response = await api.get(`/stats/stealers?limit=${limit}`)
+  const response = await api.get(`/api/stats/stealers?limit=${limit}`)
   return response.data
 }
 
@@ -105,7 +106,7 @@ export const searchCredentials = async (params: {
   limit?: number
   offset?: number
 }): Promise<SearchResponse<Credential>> => {
-  const response = await api.get('/search/credentials', { params })
+  const response = await api.get('/api/search/credentials', { params })
   return response.data
 }
 
@@ -117,7 +118,7 @@ export const searchSystems = async (params: {
   limit?: number
   offset?: number
 }): Promise<SearchResponse<System>> => {
-  const response = await api.get('/search/systems', { params })
+  const response = await api.get('/api/search/systems', { params })
   return response.data
 }
 
@@ -135,17 +136,40 @@ export interface Device {
   created_at: string
 }
 
+export interface CreditCard {
+  id: number
+  device_id: number
+  card_number: string
+  card_number_masked: string
+  expiration?: string
+  cardholder_name?: string
+  card_brand?: string
+  source_file?: string
+  created_at: string
+}
+
+export interface CreditCardStats {
+  total_credit_cards: number
+  devices_with_cards: number
+  by_brand: Array<{ brand: string; count: number }>
+}
+
+export interface CardBrandStat {
+  brand: string
+  count: number
+}
+
 export const fetchDevices = async (params: {
   q?: string
   limit?: number
   offset?: number
 }): Promise<SearchResponse<Device>> => {
-  const response = await api.get('/devices', { params })
+  const response = await api.get('/api/devices', { params })
   return response.data
 }
 
 export const fetchDevice = async (deviceId: number): Promise<Device> => {
-  const response = await api.get(`/devices/${deviceId}`)
+  const response = await api.get(`/api/devices/${deviceId}`)
   return response.data
 }
 
@@ -153,28 +177,62 @@ export const fetchDeviceCredentials = async (
   deviceId: number,
   params: { limit?: number; offset?: number }
 ): Promise<SearchResponse<Credential>> => {
-  const response = await api.get(`/devices/${deviceId}/credentials`, { params })
+  const response = await api.get(`/api/devices/${deviceId}/credentials`, { params })
   return response.data
 }
 
 // New statistics endpoints
 export const fetchBrowserStats = async (limit = 20) => {
-  const response = await api.get(`/stats/browsers?limit=${limit}`)
+  const response = await api.get(`/api/stats/browsers?limit=${limit}`)
   return response.data
 }
 export const fetchTldStats = async (limit = 20) => {
-  const response = await api.get(`/stats/tlds?limit=${limit}`)
+  const response = await api.get(`/api/stats/tlds?limit=${limit}`)
   return response.data
 }
 
 export const fetchPasswordStats = async (limit: number = 20) => {
-  const response = await fetch(`${API_BASE_URL}/stats/passwords?limit=${limit}`)
+  const response = await fetch(`${API_BASE_URL}/api/stats/passwords?limit=${limit}`)
   if (!response.ok) throw new Error('Failed to fetch password stats')
   return response.json()
 }
 
 export const fetchSoftwareStats = async (limit = 20) => {
-  const response = await api.get(`/stats/software?limit=${limit}`)
+  const response = await api.get(`/api/stats/software?limit=${limit}`)
+  return response.data
+}
+
+// Credit Card API Functions
+export const fetchCreditCards = async (params: {
+  device_id?: number
+  card_brand?: string
+  limit?: number
+  offset?: number
+}): Promise<SearchResponse<CreditCard>> => {
+  const response = await api.get('/api/credit-cards', { params })
+  return response.data
+}
+
+export const fetchCreditCard = async (cardId: number): Promise<CreditCard> => {
+  const response = await api.get(`/api/credit-cards/${cardId}`)
+  return response.data
+}
+
+export const fetchDeviceCreditCards = async (
+  deviceId: number,
+  params: { limit?: number; offset?: number }
+): Promise<SearchResponse<CreditCard>> => {
+  const response = await api.get(`/api/devices/${deviceId}/credit-cards`, { params })
+  return response.data
+}
+
+export const fetchCreditCardStats = async (): Promise<CreditCardStats> => {
+  const response = await api.get('/api/stats/credit-cards')
+  return response.data
+}
+
+export const fetchCardBrandStats = async (): Promise<CardBrandStat[]> => {
+  const response = await api.get('/api/stats/credit-card-brands')
   return response.data
 }
 
