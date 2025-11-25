@@ -226,13 +226,29 @@ class ZipIngestionService:
                     device_names_found.append(inner_zip_name)
                     inner_zip_path = Path(temp_dir) / inner_zip_name
                     
-                    with open(inner_zip_path, 'wb') as f:
-                        f.write(outer_zip.read(inner_zip_entry))
-                    
+                    # Try to extract with password support
+                    try:
+                        with open(inner_zip_path, 'wb') as f:
+                            f.write(outer_zip.read(inner_zip_entry))
+                    except RuntimeError as e:
+                        if "password" in str(e).lower():
+                            self.logger.error(f"❌ Inner ZIP is password protected: {inner_zip_name}")
+                            continue
+                        raise
+
                     self.logger.info(f"📦 Extracting inner ZIP: {inner_zip_name}")
-                    
-                    # Process the inner ZIP as a regular device ZIP
-                    with zipfile.ZipFile(inner_zip_path, 'r') as inner_zip_file:
+
+                    # Process the inner ZIP with password support
+                    try:
+                        inner_archive, inner_password = self.archive_handler.open_archive(inner_zip_path)
+                        if inner_password:
+                            self.logger.info(f"🔓 Inner ZIP opened with password: {inner_password}")
+                    except Exception as e:
+                        self.logger.error(f"❌ Could not open inner ZIP {inner_zip_name}: {e}")
+                        continue
+
+                    try:
+                        inner_zip_file = inner_archive
                         # Group files by device within this inner ZIP
                         device_map, _ = self.grouper.group_by_device(inner_zip_file)
                         
@@ -268,7 +284,11 @@ class ZipIngestionService:
                             # Commit after each device
                             db.commit()
                             self.logger.info(f"✅ Device processed: {device_name}")
-                    
+
+                    finally:
+                        # Close the inner archive
+                        inner_zip_file.close()
+
                     # Delete the inner ZIP after processing
                     inner_zip_path.unlink()
                     
