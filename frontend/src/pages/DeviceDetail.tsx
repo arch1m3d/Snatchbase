@@ -65,6 +65,10 @@ export default function DeviceDetail() {
   const [activeTab, setActiveTab] = useState<'credentials' | 'files' | 'creditcards'>('credentials')
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set())
 
+  // Track what has been loaded to prevent duplicate fetches
+  const [filesLoaded, setFilesLoaded] = useState(false)
+  const [cardsLoaded, setCardsLoaded] = useState(false)
+
   useEffect(() => {
     if (deviceId) {
       loadDeviceData()
@@ -76,6 +80,10 @@ export default function DeviceDetail() {
 
     try {
       setLoading(true)
+      // Reset loaded flags when switching devices
+      setFilesLoaded(false)
+      setCardsLoaded(false)
+
       // Only load device metadata and initial credentials - lazy load other tabs
       const [deviceData, credsData] = await Promise.all([
         fetchDevice(deviceIdNum),
@@ -95,12 +103,13 @@ export default function DeviceDetail() {
 
   // Lazy load credit cards when tab is clicked
   const loadCreditCards = async () => {
-    if (!deviceIdNum || creditCards.length > 0) return
+    if (!deviceIdNum || cardsLoaded) return
 
     try {
       const cardsData = await fetchDeviceCreditCards(deviceIdNum, { limit: 50, offset: 0 })
       setCreditCards(cardsData.results)
       setTotalCards(cardsData.total)
+      setCardsLoaded(true)
     } catch (error) {
       console.error('Failed to load credit cards:', error)
       toast.error('Failed to load credit cards')
@@ -109,11 +118,12 @@ export default function DeviceDetail() {
 
   // Lazy load files when tab is clicked
   const loadFiles = async () => {
-    if (!deviceIdNum || files.length > 0) return
+    if (!deviceIdNum || filesLoaded) return
 
     try {
       const filesData = await fetchDeviceFiles(deviceIdNum, { limit: 1000, offset: 0 })
       setFiles(filesData.results || [])
+      setFilesLoaded(true)
     } catch (error) {
       console.error('Failed to load files:', error)
       toast.error('Failed to load files')
