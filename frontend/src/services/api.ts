@@ -293,4 +293,74 @@ export const fetchCardBrandStats = async (): Promise<CardBrandStat[]> => {
   return response.data
 }
 
+// Wallet API Functions
+export interface Wallet {
+  id: number
+  device_id: number
+  wallet_type: string
+  address?: string
+  mnemonic_hash?: string
+  private_key_hash?: string
+  password?: string
+  path?: string
+  source_file?: string
+  balance: number
+  balance_usd?: number
+  last_checked?: string
+  has_balance: boolean
+  token_balances?: string
+  created_at: string
+}
+
+export interface WalletStats {
+  total_wallets: number
+  wallets_with_balance: number
+  total_value_usd: number
+  breakdown_by_type: Record<string, { count: number; total_usd: number }>
+  top_wallets: Array<{
+    id: number
+    wallet_type: string
+    address: string
+    balance: number
+    balance_usd: number
+  }>
+}
+
+export const fetchWallets = async (params: {
+  wallet_type?: string
+  has_balance?: boolean
+  min_balance?: number
+  skip?: number
+  limit?: number
+}): Promise<Wallet[]> => {
+  const response = await api.get('/api/wallets', { params })
+  return response.data
+}
+
+export const fetchWallet = async (walletId: number): Promise<Wallet> => {
+  const response = await api.get(`/api/wallets/${walletId}`)
+  return response.data
+}
+
+export const fetchWalletStats = async (): Promise<WalletStats> => {
+  const response = await api.get('/api/stats/wallets')
+  return response.data
+}
+
+export const fetchDeviceWallets = async (
+  deviceId: number,
+  params?: { wallet_type?: string; has_balance?: boolean }
+): Promise<Wallet[]> => {
+  const response = await api.get(`/api/devices/${deviceId}/wallets`, { params })
+  return response.data
+}
+
+export const triggerBalanceCheck = async (params?: {
+  wallet_ids?: number[]
+  device_id?: number
+}): Promise<{ message: string; updated: number; total_requested: number }> => {
+  const response = await api.post('/api/wallets/check-balance', params)
+  return response.data
+}
+
 export default api
