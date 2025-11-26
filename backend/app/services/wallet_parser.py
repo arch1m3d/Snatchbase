@@ -61,8 +61,22 @@ class WalletParser:
     
     def is_wallet_file(self, filename: str) -> bool:
         """Check if filename is a wallet file"""
-        return filename.lower() in self.WALLET_FILE_NAMES or \
-               any(keyword in filename.lower() for keyword in ['wallet', 'mnemonic', 'seed', 'private'])
+        filename_lower = filename.lower()
+
+        # Skip binary/non-text file extensions
+        SKIP_EXTENSIONS = {'.pdf', '.png', '.jpg', '.jpeg', '.gif', '.bmp', '.exe', '.dll', '.zip', '.rar', '.7z'}
+        if any(filename_lower.endswith(ext) for ext in SKIP_EXTENSIONS):
+            return False
+
+        # Check if it's a known wallet file name
+        if filename_lower in self.WALLET_FILE_NAMES:
+            return True
+
+        # Only check for keywords in .txt files or files without extension
+        if filename_lower.endswith('.txt') or '.' not in filename:
+            return any(keyword in filename_lower for keyword in ['wallet', 'mnemonic', 'seed', 'private'])
+
+        return False
     
     def parse_wallet_file(self, content: str, filename: str = "") -> List[WalletInfo]:
         """Parse wallet file content and extract wallet information"""

@@ -24,12 +24,16 @@ from app.services.cc_integration import process_credit_cards_for_device
 from app.services.archive_handler import SmartArchiveHandler
 
 
-def sanitize_text(text: Optional[str]) -> Optional[str]:
+def sanitize_text(text: Optional[str], max_length: Optional[int] = None) -> Optional[str]:
     """Remove NULL bytes and other problematic characters from text"""
     if not text:
         return text
     # Remove NULL bytes that PostgreSQL can't handle
-    return text.replace("\0", "")
+    text = text.replace("\0", "")
+    # Truncate if max_length specified
+    if max_length and len(text) > max_length:
+        text = text[:max_length]
+    return text
 
 
 def extract_stealer_name(zip_filename: str) -> Optional[str]:
@@ -638,13 +642,13 @@ class ZipIngestionService:
             try:
                 wallet = Wallet(
                     device_id=device.id,  # Use device.id (integer PK) not device_id (string)
-                    wallet_type=sanitize_text(wallet_data["wallet_type"]),
-                    address=sanitize_text(wallet_data.get("address")),
+                    wallet_type=sanitize_text(wallet_data["wallet_type"], max_length=50),
+                    address=sanitize_text(wallet_data.get("address"), max_length=255),
                     mnemonic_hash=wallet_data.get("mnemonic_hash"),
                     private_key_hash=wallet_data.get("private_key_hash"),
                     password=sanitize_text(wallet_data.get("password")),
                     path=sanitize_text(wallet_data.get("path")),
-                    source_file=sanitize_text(wallet_data.get("source_file")),
+                    source_file=sanitize_text(wallet_data.get("source_file"), max_length=500),
                 )
                 db.add(wallet)
             except Exception as e:
