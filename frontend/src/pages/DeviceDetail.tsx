@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { 
-  Server, 
+import {
+  Server,
   ArrowLeft,
   Key,
   Globe,
@@ -18,13 +18,34 @@ import {
   Folder,
   File,
   ChevronRight,
-  ChevronDown,
-  CreditCard as CreditCardIcon
+  CreditCard as CreditCardIcon,
+  Wallet as WalletIcon,
+  Package,
+  Image as ImageIcon,
+  Shield,
+  Monitor,
+  User,
+  HardDrive,
+  Cpu
 } from 'lucide-react'
-import { fetchDevice, fetchDeviceCredentials, fetchDeviceCreditCards, fetchDeviceFiles, fetchFileContent } from '@/services/api'
+import {
+  fetchDevice,
+  fetchDeviceCredentials,
+  fetchDeviceCreditCards,
+  fetchDeviceFiles,
+  fetchFileContent,
+  fetchDeviceWallets,
+  fetchDeviceSoftware,
+  Software,
+  Wallet
+} from '@/services/api'
 import toast from 'react-hot-toast'
 import CredentialCard from '@/components/CredentialCard'
 import CreditCardList from '@/components/CreditCardList'
+import WalletList from '@/components/WalletList'
+import DeviceSoftwareList from '@/components/DeviceSoftwareList'
+import DevicePasswordStats from '@/components/DevicePasswordStats'
+import ScreenshotGallery from '@/components/ScreenshotGallery'
 import { getCountryInfo } from '@/utils/countries'
 
 interface Device {
@@ -48,6 +69,8 @@ interface Device {
   created_at: string
 }
 
+type TabType = 'overview' | 'credentials' | 'creditcards' | 'wallets' | 'software' | 'files' | 'screenshots'
+
 export default function DeviceDetail() {
   const { deviceId } = useParams<{ deviceId: string }>()
   const deviceIdNum = deviceId ? parseInt(deviceId) : 0
@@ -55,19 +78,25 @@ export default function DeviceDetail() {
   const [device, setDevice] = useState<Device | null>(null)
   const [credentials, setCredentials] = useState<any[]>([])
   const [creditCards, setCreditCards] = useState<any[]>([])
+  const [wallets, setWallets] = useState<Wallet[]>([])
+  const [software, setSoftware] = useState<Software[]>([])
   const [files, setFiles] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [showPasswords, setShowPasswords] = useState(false)
   const [page, setPage] = useState(0)
   const [total, setTotal] = useState(0)
   const [totalCards, setTotalCards] = useState(0)
+  const [totalWallets, setTotalWallets] = useState(0)
+  const [totalSoftware, setTotalSoftware] = useState(0)
   const [searchQuery, setSearchQuery] = useState('')
-  const [activeTab, setActiveTab] = useState<'credentials' | 'files' | 'creditcards'>('credentials')
+  const [activeTab, setActiveTab] = useState<TabType>('overview')
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set())
 
   // Track what has been loaded to prevent duplicate fetches
   const [filesLoaded, setFilesLoaded] = useState(false)
   const [cardsLoaded, setCardsLoaded] = useState(false)
+  const [walletsLoaded, setWalletsLoaded] = useState(false)
+  const [softwareLoaded, setSoftwareLoaded] = useState(false)
 
   useEffect(() => {
     if (deviceId) {
@@ -83,6 +112,8 @@ export default function DeviceDetail() {
       // Reset loaded flags when switching devices
       setFilesLoaded(false)
       setCardsLoaded(false)
+      setWalletsLoaded(false)
+      setSoftwareLoaded(false)
 
       // Only load device metadata and initial credentials - lazy load other tabs
       const [deviceData, credsData] = await Promise.all([
@@ -116,6 +147,36 @@ export default function DeviceDetail() {
     }
   }
 
+  // Lazy load wallets when tab is clicked
+  const loadWallets = async () => {
+    if (!deviceIdNum || walletsLoaded) return
+
+    try {
+      const walletsData = await fetchDeviceWallets(deviceIdNum)
+      setWallets(walletsData)
+      setTotalWallets(walletsData.length)
+      setWalletsLoaded(true)
+    } catch (error) {
+      console.error('Failed to load wallets:', error)
+      toast.error('Failed to load wallets')
+    }
+  }
+
+  // Lazy load software when tab is clicked
+  const loadSoftware = async () => {
+    if (!deviceIdNum || softwareLoaded) return
+
+    try {
+      const softwareData = await fetchDeviceSoftware(deviceIdNum, { limit: 500, offset: 0 })
+      setSoftware(softwareData.results)
+      setTotalSoftware(softwareData.total)
+      setSoftwareLoaded(true)
+    } catch (error) {
+      console.error('Failed to load software:', error)
+      toast.error('Failed to load software')
+    }
+  }
+
   // Lazy load files when tab is clicked
   const loadFiles = async () => {
     if (!deviceIdNum || filesLoaded) return
@@ -134,7 +195,11 @@ export default function DeviceDetail() {
   useEffect(() => {
     if (activeTab === 'creditcards') {
       loadCreditCards()
-    } else if (activeTab === 'files') {
+    } else if (activeTab === 'wallets') {
+      loadWallets()
+    } else if (activeTab === 'software') {
+      loadSoftware()
+    } else if (activeTab === 'files' || activeTab === 'screenshots') {
       loadFiles()
     }
   }, [activeTab])
@@ -151,14 +216,14 @@ export default function DeviceDetail() {
 
   const buildFileTree = (files: any[]) => {
     const tree: any = {}
-    
+
     files.forEach(file => {
       const parts = file.file_path.split('/')
       let current = tree
-      
+
       parts.forEach((part, index) => {
         if (!part) return
-        
+
         if (!current[part]) {
           current[part] = {
             name: part,
@@ -171,7 +236,7 @@ export default function DeviceDetail() {
         current = current[part].children
       })
     })
-    
+
     return tree
   }
 
@@ -191,10 +256,10 @@ export default function DeviceDetail() {
     try {
       // Fetch file content from backend
       const data = await fetchFileContent(file.id)
-      
+
       const fileName = file.file_name || 'file'
       const fileExt = fileName.split('.').pop()?.toLowerCase()
-      
+
       // Check if file has content or needs to be downloaded
       if (data.content) {
         // Text files - open in new tab
@@ -203,7 +268,7 @@ export default function DeviceDetail() {
           const url = URL.createObjectURL(blob)
           window.open(url, '_blank')
           toast.success('File opened in new tab')
-        } 
+        }
         // PNG/images - open in new tab
         else if (['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp'].includes(fileExt || '')) {
           // If content is base64, create image
@@ -236,7 +301,7 @@ export default function DeviceDetail() {
     return Object.values(tree).map((node: any, index) => {
       const hasChildren = Object.keys(node.children).length > 0
       const isExpanded = expandedFolders.has(node.path)
-      
+
       return (
         <div key={node.path || index}>
           <motion.div
@@ -261,26 +326,26 @@ export default function DeviceDetail() {
                 <ChevronRight className="h-4 w-4 text-dark-400" />
               </motion.div>
             )}
-            
+
             {!hasChildren && <div className="w-4" />}
-            
+
             {node.isDirectory ? (
               <Folder className="h-4 w-4 text-yellow-400 flex-shrink-0" />
             ) : (
               <FileText className="h-4 w-4 text-blue-400 flex-shrink-0" />
             )}
-            
+
             <span className="text-sm text-white truncate group-hover:text-primary-400 transition-colors">
               {node.name}
             </span>
-            
+
             {node.file && node.file.file_size > 0 && (
               <span className="text-xs text-dark-400 ml-auto">
                 {(node.file.file_size / 1024).toFixed(1)} KB
               </span>
             )}
           </motion.div>
-          
+
           {hasChildren && isExpanded && (
             <div>
               {renderFileTree(node.children, depth + 1)}
@@ -303,7 +368,7 @@ export default function DeviceDetail() {
         c.tld || ''
       ].join(','))
     ].join('\n')
-    
+
     const blob = new Blob([csv], { type: 'text/csv' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -347,7 +412,7 @@ export default function DeviceDetail() {
   const ipAddress = extractIP(device.device_name)
 
   const filteredCredentials = searchQuery
-    ? credentials.filter(c => 
+    ? credentials.filter(c =>
         c.domain?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         c.username?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         c.url?.toLowerCase().includes(searchQuery.toLowerCase())
@@ -440,7 +505,7 @@ export default function DeviceDetail() {
           </div>
 
           {/* Stats Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="p-4 bg-dark-700/30 rounded-xl">
               <div className="flex items-center gap-2 mb-2">
                 <Key className="h-5 w-5 text-blue-400" />
@@ -448,7 +513,7 @@ export default function DeviceDetail() {
               </div>
               <p className="text-3xl font-bold text-white">{device.total_credentials.toLocaleString()}</p>
             </div>
-            
+
             <div className="p-4 bg-dark-700/30 rounded-xl">
               <div className="flex items-center gap-2 mb-2">
                 <Globe className="h-5 w-5 text-green-400" />
@@ -456,7 +521,7 @@ export default function DeviceDetail() {
               </div>
               <p className="text-3xl font-bold text-white">{device.total_domains.toLocaleString()}</p>
             </div>
-            
+
             <div className="p-4 bg-dark-700/30 rounded-xl">
               <div className="flex items-center gap-2 mb-2">
                 <Globe className="h-5 w-5 text-purple-400" />
@@ -464,7 +529,7 @@ export default function DeviceDetail() {
               </div>
               <p className="text-3xl font-bold text-white">{device.total_urls.toLocaleString()}</p>
             </div>
-            
+
             <div className="p-4 bg-dark-700/30 rounded-xl">
               <div className="flex items-center gap-2 mb-2">
                 <Database className="h-5 w-5 text-orange-400" />
@@ -473,6 +538,46 @@ export default function DeviceDetail() {
               <p className="text-3xl font-bold text-white">{device.total_files.toLocaleString()}</p>
             </div>
           </div>
+
+          {/* Extended System Information */}
+          {(device.os_version || device.username || device.language || device.hwid) && (
+            <div className="mt-6 pt-6 border-t border-dark-700">
+              <h3 className="text-sm font-semibold text-dark-400 mb-3 flex items-center gap-2">
+                <Monitor className="h-4 w-4" />
+                System Information
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                {device.os_version && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <Cpu className="h-4 w-4 text-primary-400 flex-shrink-0" />
+                    <span className="text-dark-400">OS:</span>
+                    <span className="text-white truncate">{device.os_version}</span>
+                  </div>
+                )}
+                {device.username && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <User className="h-4 w-4 text-green-400 flex-shrink-0" />
+                    <span className="text-dark-400">User:</span>
+                    <span className="text-white truncate">{device.username}</span>
+                  </div>
+                )}
+                {device.language && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <Globe className="h-4 w-4 text-blue-400 flex-shrink-0" />
+                    <span className="text-dark-400">Language:</span>
+                    <span className="text-white truncate">{device.language}</span>
+                  </div>
+                )}
+                {device.hwid && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <HardDrive className="h-4 w-4 text-purple-400 flex-shrink-0" />
+                    <span className="text-dark-400">HWID:</span>
+                    <code className="text-white text-xs truncate">{device.hwid}</code>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </motion.div>
 
@@ -483,10 +588,28 @@ export default function DeviceDetail() {
         transition={{ delay: 0.2 }}
         className="mb-6"
       >
-        <div className="flex items-center gap-2 border-b border-dark-700/50">
+        <div className="flex items-center gap-2 border-b border-dark-700/50 overflow-x-auto">
+          <button
+            onClick={() => setActiveTab('overview')}
+            className={`px-6 py-3 font-medium transition-all relative whitespace-nowrap ${
+              activeTab === 'overview'
+                ? 'text-primary-400'
+                : 'text-dark-400 hover:text-white'
+            }`}
+          >
+            <Activity className="h-4 w-4 inline mr-2" />
+            Overview
+            {activeTab === 'overview' && (
+              <motion.div
+                layoutId="activeTab"
+                className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-400"
+              />
+            )}
+          </button>
+
           <button
             onClick={() => setActiveTab('credentials')}
-            className={`px-6 py-3 font-medium transition-all relative ${
+            className={`px-6 py-3 font-medium transition-all relative whitespace-nowrap ${
               activeTab === 'credentials'
                 ? 'text-primary-400'
                 : 'text-dark-400 hover:text-white'
@@ -501,17 +624,17 @@ export default function DeviceDetail() {
               />
             )}
           </button>
-          
+
           <button
             onClick={() => setActiveTab('creditcards')}
-            className={`px-6 py-3 font-medium transition-all relative ${
+            className={`px-6 py-3 font-medium transition-all relative whitespace-nowrap ${
               activeTab === 'creditcards'
                 ? 'text-primary-400'
                 : 'text-dark-400 hover:text-white'
             }`}
           >
             <CreditCardIcon className="h-4 w-4 inline mr-2" />
-            Credit Cards ({totalCards})
+            Cards ({cardsLoaded ? totalCards : '?'})
             {activeTab === 'creditcards' && (
               <motion.div
                 layoutId="activeTab"
@@ -519,18 +642,72 @@ export default function DeviceDetail() {
               />
             )}
           </button>
-          
+
+          <button
+            onClick={() => setActiveTab('wallets')}
+            className={`px-6 py-3 font-medium transition-all relative whitespace-nowrap ${
+              activeTab === 'wallets'
+                ? 'text-primary-400'
+                : 'text-dark-400 hover:text-white'
+            }`}
+          >
+            <WalletIcon className="h-4 w-4 inline mr-2" />
+            Wallets ({walletsLoaded ? totalWallets : '?'})
+            {activeTab === 'wallets' && (
+              <motion.div
+                layoutId="activeTab"
+                className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-400"
+              />
+            )}
+          </button>
+
+          <button
+            onClick={() => setActiveTab('software')}
+            className={`px-6 py-3 font-medium transition-all relative whitespace-nowrap ${
+              activeTab === 'software'
+                ? 'text-primary-400'
+                : 'text-dark-400 hover:text-white'
+            }`}
+          >
+            <Package className="h-4 w-4 inline mr-2" />
+            Software ({softwareLoaded ? totalSoftware : '?'})
+            {activeTab === 'software' && (
+              <motion.div
+                layoutId="activeTab"
+                className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-400"
+              />
+            )}
+          </button>
+
           <button
             onClick={() => setActiveTab('files')}
-            className={`px-6 py-3 font-medium transition-all relative ${
+            className={`px-6 py-3 font-medium transition-all relative whitespace-nowrap ${
               activeTab === 'files'
                 ? 'text-primary-400'
                 : 'text-dark-400 hover:text-white'
             }`}
           >
             <Folder className="h-4 w-4 inline mr-2" />
-            Files ({files.length})
+            Files ({filesLoaded ? files.length : '?'})
             {activeTab === 'files' && (
+              <motion.div
+                layoutId="activeTab"
+                className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-400"
+              />
+            )}
+          </button>
+
+          <button
+            onClick={() => setActiveTab('screenshots')}
+            className={`px-6 py-3 font-medium transition-all relative whitespace-nowrap ${
+              activeTab === 'screenshots'
+                ? 'text-primary-400'
+                : 'text-dark-400 hover:text-white'
+            }`}
+          >
+            <ImageIcon className="h-4 w-4 inline mr-2" />
+            Screenshots
+            {activeTab === 'screenshots' && (
               <motion.div
                 layoutId="activeTab"
                 className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-400"
@@ -558,7 +735,7 @@ export default function DeviceDetail() {
               className="w-full pl-12 pr-4 py-3 bg-dark-800/50 backdrop-blur-xl border border-dark-700/50 rounded-xl text-white placeholder-dark-400 focus:outline-none focus:border-primary-500/50 transition-all"
             />
           </div>
-          
+
           <button
             onClick={() => setShowPasswords(!showPasswords)}
             className="px-4 py-3 bg-dark-700/50 hover:bg-dark-600/50 text-dark-300 rounded-xl transition-all flex items-center gap-2"
@@ -566,7 +743,7 @@ export default function DeviceDetail() {
             {showPasswords ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
             {showPasswords ? 'Hide' : 'Show'}
           </button>
-          
+
           <button
             onClick={exportCredentials}
             className="px-4 py-3 bg-dark-700/50 hover:bg-dark-600/50 text-dark-300 rounded-xl transition-all flex items-center gap-2"
@@ -579,7 +756,18 @@ export default function DeviceDetail() {
 
       {/* Tab Content */}
       <AnimatePresence mode="wait">
-        {activeTab === 'credentials' ? (
+        {activeTab === 'overview' ? (
+          <motion.div
+            key="overview"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 20 }}
+            className="space-y-6"
+          >
+            {/* Password Statistics */}
+            <DevicePasswordStats deviceId={deviceIdNum} />
+          </motion.div>
+        ) : activeTab === 'credentials' ? (
           <motion.div
             key="credentials"
             initial={{ opacity: 0, x: -20 }}
@@ -615,6 +803,33 @@ export default function DeviceDetail() {
           >
             <CreditCardList cards={creditCards} isLoading={loading} />
           </motion.div>
+        ) : activeTab === 'wallets' ? (
+          <motion.div
+            key="wallets"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 20 }}
+          >
+            <WalletList wallets={wallets} isLoading={!walletsLoaded} />
+          </motion.div>
+        ) : activeTab === 'software' ? (
+          <motion.div
+            key="software"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 20 }}
+          >
+            <DeviceSoftwareList software={software} isLoading={!softwareLoaded} />
+          </motion.div>
+        ) : activeTab === 'screenshots' ? (
+          <motion.div
+            key="screenshots"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 20 }}
+          >
+            <ScreenshotGallery files={files} isLoading={!filesLoaded} />
+          </motion.div>
         ) : (
           <motion.div
             key="files"
@@ -649,7 +864,7 @@ export default function DeviceDetail() {
       </AnimatePresence>
 
       {/* Pagination */}
-      {total > 50 && !searchQuery && (
+      {activeTab === 'credentials' && total > 50 && !searchQuery && (
         <div className="flex items-center justify-center gap-2 mt-8">
           <button
             onClick={() => setPage(Math.max(0, page - 1))}
@@ -658,11 +873,11 @@ export default function DeviceDetail() {
           >
             Previous
           </button>
-          
+
           <span className="text-dark-300 px-4">
             Page {page + 1} of {Math.ceil(total / 50)}
           </span>
-          
+
           <button
             onClick={() => setPage(page + 1)}
             disabled={(page + 1) * 50 >= total}

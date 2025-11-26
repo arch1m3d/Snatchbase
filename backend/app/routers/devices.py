@@ -152,25 +152,25 @@ async def get_device_files(
 
 @router.get("/devices/{device_id}/software")
 async def get_device_software(
-    device_id: str,
+    device_id: int,
     limit: int = Query(default=100, ge=1, le=1000, description="Number of results to return (max 1000)"),
     offset: int = Query(default=0, ge=0, description="Number of results to skip"),
     db: Session = Depends(get_db)
 ):
-    """Get installed software for a specific device"""
-    # Check if device exists
-    device = search_service.get_device_by_id(db, device_id)
+    """Get installed software for a specific device by numeric ID"""
+    # Check if device exists and get its device_id string
+    device = db.query(Device).filter(Device.id == device_id).first()
     if not device:
         raise HTTPException(status_code=404, detail="Device not found")
 
-    # Get software (limit results, skip count for performance)
+    # Get software count
+    total = db.query(Software).filter(Software.device_id == device.device_id).count()
+
+    # Get software (limit results)
     software = db.query(Software).filter(
-        Software.device_id == device_id
+        Software.device_id == device.device_id
     ).offset(offset).limit(limit).all()
 
-    # Return -1 for total to indicate "unknown" (avoids slow count)
-    total = -1
-    
     return {
         "results": [
             {
@@ -184,4 +184,41 @@ async def get_device_software(
         "total": total,
         "limit": limit,
         "offset": offset
+    }
+
+
+@router.get("/devices/{device_id}/password-stats")
+async def get_device_password_stats(
+    device_id: int,
+    limit: int = Query(default=20, ge=1, le=100, description="Number of top passwords to return"),
+    db: Session = Depends(get_db)
+):
+    """Get password statistics for a specific device by numeric ID"""
+    from app.models import PasswordStat
+    from sqlalchemy import desc
+
+    # Check if device exists and get its device_id string
+    device = db.query(Device).filter(Device.id == device_id).first()
+    if not device:
+        raise HTTPException(status_code=404, detail="Device not found")
+
+    # Get top passwords for this device
+    password_stats = db.query(PasswordStat).filter(
+        PasswordStat.device_id == device.device_id
+    ).order_by(desc(PasswordStat.count)).limit(limit).all()
+
+    # Calculate totals
+    total_passwords = sum(ps.count for ps in password_stats)
+    unique_passwords = len(password_stats)
+
+    return {
+        "total_passwords": total_passwords,
+        "unique_passwords": unique_passwords,
+        "top_passwords": [
+            {
+                "password": ps.password,
+                "count": ps.count
+            }
+            for ps in password_stats
+        ]
     }

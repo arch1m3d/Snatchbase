@@ -363,4 +363,42 @@ export const triggerBalanceCheck = async (params?: {
   return response.data
 }
 
+// Software API Functions
+export interface Software {
+  id: number
+  software_name: string
+  version?: string
+  source_file: string
+}
+
+export const fetchDeviceSoftware = async (
+  deviceId: number,
+  params?: { limit?: number; offset?: number }
+): Promise<SearchResponse<Software>> => {
+  const response = await api.get(`/api/devices/${deviceId}/software`, { params })
+  return response.data
+}
+
+// Password Stats API Functions
+export interface PasswordStat {
+  password: string
+  count: number
+}
+
+export interface DevicePasswordStats {
+  total_passwords: number
+  unique_passwords: number
+  top_passwords: PasswordStat[]
+}
+
+export const fetchDevicePasswordStats = async (
+  deviceId: number,
+  limit?: number
+): Promise<DevicePasswordStats> => {
+  const response = await api.get(`/api/devices/${deviceId}/password-stats`, {
+    params: { limit }
+  })
+  return response.data
+}
+
 export default api
