@@ -1,6 +1,7 @@
 import React from 'react'
+import { Link } from 'react-router-dom'
 import { Wallet } from '../services/api'
-import { Wallet as WalletIcon, Copy, ExternalLink } from 'lucide-react'
+import { Wallet as WalletIcon, Copy, ExternalLink, Server } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 interface WalletListProps {
@@ -142,8 +143,14 @@ const WalletList: React.FC<WalletListProps> = ({ wallets, isLoading }) => {
                 )}
 
                 <div>
-                  <span className="text-dark-400 font-medium">Device ID:</span>
-                  <p className="text-white font-mono text-xs truncate">{wallet.device_id}</p>
+                  <span className="text-dark-400 font-medium">Device:</span>
+                  <Link
+                    to={`/device/${wallet.device_id}`}
+                    className="flex items-center gap-1 text-primary-400 hover:text-primary-300 font-mono text-xs truncate transition-colors group"
+                  >
+                    <Server className="h-3 w-3 flex-shrink-0" />
+                    <span className="group-hover:underline">View Device</span>
+                  </Link>
                 </div>
 
                 {wallet.last_checked && (
