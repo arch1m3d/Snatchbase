@@ -15,9 +15,10 @@ Modern web application for ingesting, analyzing, and searching through stealer m
 ## Current State and ToDo
 
 ### Current State
-As you may have seen by all the emojis this project is mostly vibecoded. Meaning there is alot of weird bs. Im in the process of cleaning everyhting up and making it more maintainable. 
+As you may have seen by all the emojis this project is mostly vibecoded. Meaning there is alot of weird bs. Im in the process of cleaning everything up and making it more maintainable. 
 
 ### ToDo
+- Come up with automated ingestion solution from sources like telegram and co.
 - Add .RAR Archive support
 - Overwork UI, ultra laggy
 - Implement Stealer family detection
