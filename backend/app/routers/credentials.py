@@ -2,7 +2,7 @@
 Credentials Router
 Handles credential search, filtering, and export endpoints
 """
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from fastapi.responses import PlainTextResponse
 from sqlalchemy.orm import Session
 from typing import Optional
@@ -22,8 +22,8 @@ async def search_credentials(
     browser: Optional[str] = None,
     tld: Optional[str] = None,
     stealer_name: Optional[str] = None,
-    limit: int = 100,
-    offset: int = 0,
+    limit: int = Query(default=100, ge=1, le=1000, description="Number of results to return (max 1000)"),
+    offset: int = Query(default=0, ge=0, description="Number of results to skip"),
     db: Session = Depends(get_db)
 ):
     """Search credentials with filters (enhanced with browser, TLD, and stealer)"""
@@ -56,7 +56,7 @@ async def export_credentials(
     browser: Optional[str] = None,
     tld: Optional[str] = None,
     stealer_name: Optional[str] = None,
-    limit: int = 10000,
+    limit: int = Query(default=10000, ge=1, le=50000, description="Number of results to export (max 50000)"),
     db: Session = Depends(get_db)
 ):
     """Export credentials as email:password text file"""

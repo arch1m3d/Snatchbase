@@ -21,7 +21,7 @@ import {
   ChevronDown,
   CreditCard as CreditCardIcon
 } from 'lucide-react'
-import { fetchDevice, fetchDeviceCredentials, fetchDeviceCreditCards } from '@/services/api'
+import { fetchDevice, fetchDeviceCredentials, fetchDeviceCreditCards, fetchDeviceFiles, fetchFileContent } from '@/services/api'
 import toast from 'react-hot-toast'
 import CredentialCard from '@/components/CredentialCard'
 import CreditCardList from '@/components/CreditCardList'
@@ -65,6 +65,10 @@ export default function DeviceDetail() {
   const [activeTab, setActiveTab] = useState<'credentials' | 'files' | 'creditcards'>('credentials')
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set())
 
+  // Track what has been loaded to prevent duplicate fetches
+  const [filesLoaded, setFilesLoaded] = useState(false)
+  const [cardsLoaded, setCardsLoaded] = useState(false)
+
   useEffect(() => {
     if (deviceId) {
       loadDeviceData()
@@ -73,22 +77,22 @@ export default function DeviceDetail() {
 
   const loadDeviceData = async () => {
     if (!deviceIdNum) return
-    
+
     try {
       setLoading(true)
-      const [deviceData, credsData, cardsData, filesData] = await Promise.all([
+      // Reset loaded flags when switching devices
+      setFilesLoaded(false)
+      setCardsLoaded(false)
+
+      // Only load device metadata and initial credentials - lazy load other tabs
+      const [deviceData, credsData] = await Promise.all([
         fetchDevice(deviceIdNum),
-        fetchDeviceCredentials(deviceIdNum, { limit: 50, offset: page * 50 }),
-        fetchDeviceCreditCards(deviceIdNum, { limit: 50, offset: 0 }),
-        fetch(`http://localhost:8000/devices/${deviceIdNum}/files?limit=1000`).then(r => r.json())
+        fetchDeviceCredentials(deviceIdNum, { limit: 50, offset: page * 50 })
       ])
-      
+
       setDevice(deviceData)
       setCredentials(credsData.results)
       setTotal(credsData.total)
-      setCreditCards(cardsData.results)
-      setTotalCards(cardsData.total)
-      setFiles(filesData.results || [])
     } catch (error) {
       console.error('Failed to load device:', error)
       toast.error('Failed to load device data')
@@ -96,6 +100,44 @@ export default function DeviceDetail() {
       setLoading(false)
     }
   }
+
+  // Lazy load credit cards when tab is clicked
+  const loadCreditCards = async () => {
+    if (!deviceIdNum || cardsLoaded) return
+
+    try {
+      const cardsData = await fetchDeviceCreditCards(deviceIdNum, { limit: 50, offset: 0 })
+      setCreditCards(cardsData.results)
+      setTotalCards(cardsData.total)
+      setCardsLoaded(true)
+    } catch (error) {
+      console.error('Failed to load credit cards:', error)
+      toast.error('Failed to load credit cards')
+    }
+  }
+
+  // Lazy load files when tab is clicked
+  const loadFiles = async () => {
+    if (!deviceIdNum || filesLoaded) return
+
+    try {
+      const filesData = await fetchDeviceFiles(deviceIdNum, { limit: 1000, offset: 0 })
+      setFiles(filesData.results || [])
+      setFilesLoaded(true)
+    } catch (error) {
+      console.error('Failed to load files:', error)
+      toast.error('Failed to load files')
+    }
+  }
+
+  // Load data when switching tabs
+  useEffect(() => {
+    if (activeTab === 'creditcards') {
+      loadCreditCards()
+    } else if (activeTab === 'files') {
+      loadFiles()
+    }
+  }, [activeTab])
 
   const extractCountryCode = (deviceName: string) => {
     const match = deviceName.match(/\[([A-Z]{2})\]/)
@@ -145,11 +187,10 @@ export default function DeviceDetail() {
 
   const handleFileClick = async (file: any) => {
     if (!file || !file.id) return
-    
+
     try {
       // Fetch file content from backend
-      const response = await fetch(`http://localhost:8000/files/${file.id}`)
-      const data = await response.json()
+      const data = await fetchFileContent(file.id)
       
       const fileName = file.file_name || 'file'
       const fileExt = fileName.split('.').pop()?.toLowerCase()

@@ -129,6 +129,22 @@ export const searchCredentials = async (params: {
   return response.data
 }
 
+export const exportCredentials = async (params: {
+  q?: string
+  domain?: string
+  username?: string
+  browser?: string
+  tld?: string
+  stealer_name?: string
+  limit?: number
+}): Promise<Blob> => {
+  const response = await api.get('/api/search/export', {
+    params,
+    responseType: 'blob'
+  })
+  return response.data
+}
+
 export const searchSystems = async (params: {
   q?: string
   country?: string
@@ -200,6 +216,29 @@ export const fetchDeviceCredentials = async (
   return response.data
 }
 
+export interface FileItem {
+  id: number
+  file_path: string
+  file_name: string
+  parent_path?: string
+  is_directory: boolean
+  file_size: number
+  has_content: boolean
+}
+
+export const fetchDeviceFiles = async (
+  deviceId: number,
+  params: { limit?: number; offset?: number }
+): Promise<SearchResponse<FileItem>> => {
+  const response = await api.get(`/api/devices/${deviceId}/files`, { params })
+  return response.data
+}
+
+export const fetchFileContent = async (fileId: number): Promise<{ content: string }> => {
+  const response = await api.get(`/api/files/${fileId}`)
+  return response.data
+}
+
 // New statistics endpoints
 export const fetchBrowserStats = async (limit = 20) => {
   const response = await api.get(`/api/stats/browsers?limit=${limit}`)
@@ -211,9 +250,8 @@ export const fetchTldStats = async (limit = 20) => {
 }
 
 export const fetchPasswordStats = async (limit: number = 20) => {
-  const response = await fetch(`${API_BASE_URL}/api/stats/passwords?limit=${limit}`)
-  if (!response.ok) throw new Error('Failed to fetch password stats')
-  return response.json()
+  const response = await api.get(`/api/stats/passwords?limit=${limit}`)
+  return response.data
 }
 
 export const fetchSoftwareStats = async (limit = 20) => {
