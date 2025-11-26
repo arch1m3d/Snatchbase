@@ -2,7 +2,7 @@
 Devices Router
 Handles device listing, details, and related data endpoints
 """
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Query
 from sqlalchemy.orm import Session
 from typing import Optional
 
@@ -18,8 +18,8 @@ search_service = SearchService()
 @router.get("/devices")
 async def list_devices(
     q: Optional[str] = None,
-    limit: int = 100,
-    offset: int = 0,
+    limit: int = Query(default=100, ge=1, le=1000, description="Number of results to return (max 1000)"),
+    offset: int = Query(default=0, ge=0, description="Number of results to skip"),
     db: Session = Depends(get_db)
 ):
     """List all devices with optional search"""
@@ -84,8 +84,8 @@ async def get_device(device_id: int, db: Session = Depends(get_db)):
 @router.get("/devices/{device_id}/credentials")
 async def get_device_credentials(
     device_id: int,
-    limit: int = 100,
-    offset: int = 0,
+    limit: int = Query(default=100, ge=1, le=1000, description="Number of results to return (max 1000)"),
+    offset: int = Query(default=0, ge=0, description="Number of results to skip"),
     db: Session = Depends(get_db)
 ):
     """Get credentials for a specific device by numeric ID"""
@@ -113,8 +113,8 @@ async def get_device_credentials(
 @router.get("/devices/{device_id}/files")
 async def get_device_files(
     device_id: int,
-    limit: int = 100,
-    offset: int = 0,
+    limit: int = Query(default=100, ge=1, le=10000, description="Number of results to return (max 10000)"),
+    offset: int = Query(default=0, ge=0, description="Number of results to skip"),
     db: Session = Depends(get_db)
 ):
     """Get file tree for a specific device by numeric ID"""
@@ -153,8 +153,8 @@ async def get_device_files(
 @router.get("/devices/{device_id}/software")
 async def get_device_software(
     device_id: str,
-    limit: int = 100,
-    offset: int = 0,
+    limit: int = Query(default=100, ge=1, le=1000, description="Number of results to return (max 1000)"),
+    offset: int = Query(default=0, ge=0, description="Number of results to skip"),
     db: Session = Depends(get_db)
 ):
     """Get installed software for a specific device"""

@@ -8,9 +8,11 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
 import logging
+import os
 
 from app.database import engine
 from app.models import Base
+from app.middleware import RateLimitMiddleware
 
 # Import routers
 from app.routers import wallets, credentials, devices, statistics, files, credit_cards
@@ -24,14 +26,20 @@ app = FastAPI(
     version="2.0.0"
 )
 
-# CORS middleware
+# CORS middleware - secure configuration
+# Allow specific origins from environment variable or default to localhost for development
+allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:8000,http://127.0.0.1:3000,http://127.0.0.1:8000").split(",")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
-    allow_methods=["*"],
+    allow_origins=allowed_origins,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
+
+# Rate limiting middleware (100 requests/minute, 10 requests/second per IP)
+app.add_middleware(RateLimitMiddleware, requests_per_minute=100, requests_per_second=10)
 
 # Include routers
 app.include_router(credentials.router, prefix="/api", tags=["credentials"])

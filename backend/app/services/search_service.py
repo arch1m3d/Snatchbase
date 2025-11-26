@@ -196,14 +196,14 @@ class SearchService:
         limit: int = 100,
         offset: int = 0
     ) -> tuple[List[SystemResponse], int]:
-        """Search systems with filters and return total count"""
-        
+        """Search systems with filters and return total count (optimized)"""
+
         # Start with base query
         base_query = db.query(System)
-        
+
         # Apply filters
         filters = []
-        
+
         if query:
             # Full-text search across multiple fields
             search_filter = or_(
@@ -214,26 +214,26 @@ class SearchService:
                 System.machine_id.ilike(f"%{query}%")
             )
             filters.append(search_filter)
-        
+
         if country:
             filters.append(System.country.ilike(f"%{country}%"))
-        
+
         if ip_address:
             filters.append(System.ip_address.ilike(f"%{ip_address}%"))
-        
+
         if computer_name:
             filters.append(System.computer_name.ilike(f"%{computer_name}%"))
-        
+
         # Apply all filters
         if filters:
             base_query = base_query.filter(and_(*filters))
-        
-        # Get total count
-        total = base_query.count()
-        
+
         # Apply ordering and pagination for results
         systems = base_query.order_by(desc(System.created_at)).offset(offset).limit(limit).all()
-        
+
+        # Use estimate_count instead of expensive COUNT() query
+        total = self.estimate_count(base_query, len(systems), limit, offset)
+
         return [SystemResponse.from_orm(sys) for sys in systems], total
     
     def get_statistics(self, db: Session) -> StatisticsResponse:
@@ -402,29 +402,55 @@ class SearchService:
         return [{"software_name": name, "device_count": count} for name, count in results]
     
     def _enrich_credentials_with_duplicates(self, db: Session, credentials: List[Credential]) -> List[CredentialResponse]:
-        """Enrich credentials with duplicate detection information"""
-        enriched = []
-        
+        """Enrich credentials with duplicate detection information (optimized - no N+1 queries)"""
+        if not credentials:
+            return []
+
+        # Build a map of credential IDs for quick lookup
+        cred_id_set = {cred.id for cred in credentials}
+
+        # Create conditions for finding all potential duplicates in a single query
+        # Group by (device_id, username, password) combinations
+        device_user_pass_combos = []
         for cred in credentials:
-            # Find duplicates: same username + password in the same device
-            duplicates = db.query(Credential).filter(
+            device_user_pass_combos.append(
                 and_(
                     Credential.device_id == cred.device_id,
                     Credential.username == cred.username,
-                    Credential.password == cred.password,
-                    Credential.id != cred.id  # Exclude self
+                    Credential.password == cred.password
                 )
-            ).all()
-            
-            # Convert to response model
+            )
+
+        # Single query to fetch all potential duplicates
+        all_duplicates = db.query(Credential).filter(
+            or_(*device_user_pass_combos)
+        ).all()
+
+        # Build a lookup map: (device_id, username, password) -> [credential_ids]
+        duplicate_map = {}
+        for dup in all_duplicates:
+            key = (dup.device_id, dup.username, dup.password)
+            if key not in duplicate_map:
+                duplicate_map[key] = []
+            duplicate_map[key].append(dup.id)
+
+        # Enrich credentials with duplicate information
+        enriched = []
+        for cred in credentials:
             cred_response = CredentialResponse.from_orm(cred)
-            
-            # Add duplicate information
-            if duplicates:
+
+            # Look up duplicates for this credential
+            key = (cred.device_id, cred.username, cred.password)
+            duplicate_ids = duplicate_map.get(key, [])
+
+            # Remove self from duplicate list
+            duplicate_ids = [d_id for d_id in duplicate_ids if d_id != cred.id]
+
+            if duplicate_ids:
                 cred_response.is_duplicate = True
-                cred_response.duplicate_count = len(duplicates)
-                cred_response.duplicate_ids = [d.id for d in duplicates]
-            
+                cred_response.duplicate_count = len(duplicate_ids)
+                cred_response.duplicate_ids = duplicate_ids
+
             enriched.append(cred_response)
 
         return enriched

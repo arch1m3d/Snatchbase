@@ -15,7 +15,7 @@ import {
   Shield,
   ChevronDown
 } from 'lucide-react'
-import { searchCredentials, Credential } from '@/services/api'
+import { searchCredentials, exportCredentials, Credential } from '@/services/api'
 import toast from 'react-hot-toast'
 import CredentialCard from '@/components/CredentialCard'
 
@@ -112,20 +112,19 @@ export default function SearchNew() {
   const exportTxt = async () => {
     try {
       // Build query params
-      const params = new URLSearchParams()
-      if (searchQuery) params.append('q', searchQuery)
-      if (filters.domain) params.append('domain', filters.domain)
-      if (filters.username) params.append('username', filters.username)
-      if (filters.browser) params.append('browser', filters.browser)
-      if (filters.tld) params.append('tld', filters.tld)
-      if (filters.stealer_name) params.append('stealer_name', filters.stealer_name)
-      params.append('limit', '10000') // Export up to 10k results
-      
-      // Fetch from export endpoint
-      const response = await fetch(`http://localhost:8000/search/export?${params.toString()}`)
-      if (!response.ok) throw new Error('Export failed')
-      
-      const blob = await response.blob()
+      const params: any = {
+        limit: 10000 // Export up to 10k results
+      }
+      if (searchQuery) params.q = searchQuery
+      if (filters.domain) params.domain = filters.domain
+      if (filters.username) params.username = filters.username
+      if (filters.browser) params.browser = filters.browser
+      if (filters.tld) params.tld = filters.tld
+      if (filters.stealer_name) params.stealer_name = filters.stealer_name
+
+      // Fetch from export endpoint using centralized API
+      const blob = await exportCredentials(params)
+
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url

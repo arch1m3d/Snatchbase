@@ -95,6 +95,11 @@ class Credential(Base):
         Index('idx_credential_browser', 'browser'),
         Index('idx_credential_stealer_name', 'stealer_name'),
         Index('idx_credential_created_at', 'created_at'),
+        # Composite indexes for common query patterns (performance optimization)
+        Index('idx_credential_dedup', 'device_id', 'username', 'password'),  # For duplicate detection
+        Index('idx_credential_domain_tld', 'domain', 'tld'),  # For domain filtering
+        Index('idx_credential_device_created', 'device_id', 'created_at'),  # For device credential listings
+        Index('idx_credential_stealer_created', 'stealer_name', 'created_at'),  # For stealer filtering
     )
 
 class PasswordStat(Base):
@@ -176,9 +181,9 @@ class System(Base):
 class Wallet(Base):
     """Wallet model - stores cryptocurrency wallet data"""
     __tablename__ = "wallets"
-    
+
     id = Column(Integer, primary_key=True, index=True)
-    device_id = Column(Integer, ForeignKey("devices.id"), nullable=False, index=True)
+    device_id = Column(String(500), ForeignKey("devices.device_id"), nullable=False, index=True)
     wallet_type = Column(String(50), nullable=False, index=True)  # BTC, ETH, MATIC, etc.
     address = Column(String(255), index=True)  # Wallet address
     mnemonic_hash = Column(String(64), index=True)  # SHA256 hash of mnemonic (never store plaintext)

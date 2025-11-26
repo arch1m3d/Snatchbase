@@ -171,15 +171,19 @@ class PasswordFileParser:
     def _is_ip_address(self, url: str) -> bool:
         """Check if URL is an IP address"""
         try:
+            if not url:
+                return False
+
             hostname = url.strip()
             hostname = re.sub(r"^https?://", "", hostname)
             hostname = hostname.split("/")[0]
             hostname = hostname.split(":")[0]
-            
+
             # Simple IPv4 regex
             ip_regex = r"^(\d{1,3}\.){3}\d{1,3}$"
             return bool(re.match(ip_regex, hostname))
-        except:
+        except (AttributeError, IndexError, TypeError) as e:
+            # Handle string operation errors gracefully
             return False
     
     def _extract_url_info(self, url: str) -> Dict[str, Optional[str]]:
@@ -187,26 +191,27 @@ class PasswordFileParser:
         try:
             if not url or not url.strip():
                 return {"domain": None, "tld": None}
-            
+
             clean_url = url.strip()
             clean_url = re.sub(r"^https?://", "", clean_url)
             clean_url = re.sub(r"^www\.", "", clean_url)
-            
+
             hostname = clean_url.split("/")[0].split(":")[0].lower()
-            
+
             # Check if it's an IP address
             if self._is_ip_address(url):
                 return {"domain": hostname, "tld": None}
-            
+
             # Extract domain and TLD
             parts = hostname.split(".")
             if len(parts) >= 2:
                 tld = parts[-1]
                 domain = ".".join(parts[-2:]) if len(parts) > 2 else hostname
                 return {"domain": domain, "tld": tld}
-            
+
             return {"domain": hostname, "tld": None}
-        except:
+        except (AttributeError, IndexError, TypeError, ValueError) as e:
+            # Handle URL parsing errors gracefully - return None for malformed URLs
             return {"domain": None, "tld": None}
 
 
