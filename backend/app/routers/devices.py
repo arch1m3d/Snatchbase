@@ -4,12 +4,13 @@ Handles device listing, details, and related data endpoints
 """
 from fastapi import APIRouter, HTTPException, Depends, Query
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from typing import Optional
 
 from app.database import get_db
 from app.services.search_service import SearchService
 from app.schemas import CredentialResponse
-from app.models import Device, Credential, File, Software
+from app.models import Device, Credential, File, Software, Wallet
 
 router = APIRouter()
 search_service = SearchService()

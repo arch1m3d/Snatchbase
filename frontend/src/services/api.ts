@@ -1,4 +1,4 @@
-import axios from 'axios'
+import axios from 'axios';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
@@ -168,6 +168,10 @@ export interface Device {
   total_credentials: number
   total_domains: number
   total_urls: number
+  total_wallets: number
+  total_cookies: number
+  total_screenshots: number
+  total_software: number
   created_at: string
 }
 
@@ -379,23 +383,21 @@ export const fetchDeviceSoftware = async (
   return response.data
 }
 
-// Password Stats API Functions
-export interface PasswordStat {
-  password: string
-  count: number
+// Cookie API Functions
+export interface CookieFile {
+  id: number
+  file_name: string
+  file_path: string
+  file_size: number
+  cookie_count: number
+  service: string
 }
 
-export interface DevicePasswordStats {
-  total_passwords: number
-  unique_passwords: number
-  top_passwords: PasswordStat[]
-}
-
-export const fetchDevicePasswordStats = async (
+export const fetchDeviceCookies = async (
   deviceId: number,
-  limit?: number
-): Promise<DevicePasswordStats> => {
-  const response = await api.get(`/api/devices/${deviceId}/password-stats`, {
+  limit: number = 100
+): Promise<CookieFile[]> => {
+  const response = await api.get(`/api/devices/${deviceId}/cookies`, {
     params: { limit }
   })
   return response.data
