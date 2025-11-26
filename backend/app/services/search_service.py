@@ -331,11 +331,11 @@ class SearchService:
             search_filter = Device.device_name.ilike(f"%{query}%")
             base_query = base_query.filter(search_filter)
 
-        # Fetch devices first
-        devices = base_query.order_by(desc(Device.created_at)).offset(offset).limit(limit).all()
+        # Get accurate count for devices (they're relatively few compared to credentials)
+        total = base_query.count()
 
-        # Estimate count instead of expensive COUNT() query
-        total = self.estimate_count(base_query, len(devices), limit, offset)
+        # Fetch devices with pagination
+        devices = base_query.order_by(desc(Device.created_at)).offset(offset).limit(limit).all()
 
         return devices, total
     
