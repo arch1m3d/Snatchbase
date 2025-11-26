@@ -1,12 +1,12 @@
-import { useState } from 'react'
+import { useState, useCallback, memo } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
-import { 
-  Globe, 
-  User, 
-  Key, 
-  Eye, 
-  EyeOff, 
+import {
+  Globe,
+  User,
+  Key,
+  Eye,
+  EyeOff,
   Copy,
   AlertTriangle,
   ExternalLink,
@@ -23,20 +23,21 @@ interface CredentialCardProps {
   showDeviceLink?: boolean
 }
 
-export default function CredentialCard({ credential, showPassword = false, showDeviceLink = false }: CredentialCardProps) {
+function CredentialCard({ credential, showPassword = false, showDeviceLink = false }: CredentialCardProps) {
   const [isPasswordVisible, setIsPasswordVisible] = useState(showPassword)
   const [isExpanded, setIsExpanded] = useState(false)
   const navigate = useNavigate()
-  const copyToClipboard = async (text: string, label: string) => {
+
+  const copyToClipboard = useCallback(async (text: string, label: string) => {
     try {
       await navigator.clipboard.writeText(text)
       toast.success(`${label} copied to clipboard`)
     } catch (err) {
       toast.error('Failed to copy to clipboard')
     }
-  }
+  }, [])
 
-  const formatDate = (dateString: string) => {
+  const formatDate = useCallback((dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
@@ -44,9 +45,9 @@ export default function CredentialCard({ credential, showPassword = false, showD
       hour: '2-digit',
       minute: '2-digit'
     })
-  }
+  }, [])
 
-  const getSeverityColor = (stealer?: string) => {
+  const getSeverityColor = useCallback((stealer?: string) => {
     if (!stealer) return 'text-gray-400'
     const stealerLower = stealer.toLowerCase()
     if (stealerLower.includes('redline') || stealerLower.includes('vidar')) {
@@ -56,14 +57,14 @@ export default function CredentialCard({ credential, showPassword = false, showD
       return 'text-yellow-400'
     }
     return 'text-blue-400'
-  }
+  }, [])
 
-  const getDomainRisk = (domain?: string) => {
+  const getDomainRisk = useCallback((domain?: string) => {
     if (!domain) return null
     const riskDomains = ['paypal', 'amazon', 'google', 'microsoft', 'apple', 'facebook', 'twitter']
     const isHighRisk = riskDomains.some(risk => domain.toLowerCase().includes(risk))
     return isHighRisk ? 'high' : 'low'
-  }
+  }, [])
 
   const domainRisk = getDomainRisk(credential.domain)
 
@@ -275,3 +276,15 @@ export default function CredentialCard({ credential, showPassword = false, showD
     </motion.div>
   )
 }
+
+// Memoize component to prevent unnecessary re-renders
+// Only re-render if credential, showPassword, or showDeviceLink props change
+export default memo(CredentialCard, (prevProps, nextProps) => {
+  return (
+    prevProps.credential.id === nextProps.credential.id &&
+    prevProps.showPassword === nextProps.showPassword &&
+    prevProps.showDeviceLink === nextProps.showDeviceLink &&
+    prevProps.credential.is_duplicate === nextProps.credential.is_duplicate &&
+    prevProps.credential.duplicate_count === nextProps.credential.duplicate_count
+  )
+})
