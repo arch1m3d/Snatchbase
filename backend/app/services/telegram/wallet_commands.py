@@ -9,7 +9,7 @@ from app.models import Wallet
 from sqlalchemy import func, desc
 from decimal import Decimal
 import asyncio
-from .config import logger, ALLOWED_USER_ID
+from .config import logger, is_user_allowed
 from .utils import get_back_button
 
 
@@ -19,7 +19,7 @@ async def wallets_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     user_id = update.effective_user.id
     
-    if user_id != ALLOWED_USER_ID:
+    if not is_user_allowed(user_id):
         await update.message.reply_text("⛔ Unauthorized access denied.")
         return
     
@@ -104,7 +104,7 @@ async def checkwallets_command(update: Update, context: ContextTypes.DEFAULT_TYP
     """
     user_id = update.effective_user.id
     
-    if user_id != ALLOWED_USER_ID:
+    if not is_user_allowed(user_id):
         await update.message.reply_text("⛔ Unauthorized access denied.")
         return
     
@@ -186,7 +186,7 @@ async def highvalue_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     user_id = update.effective_user.id
     
-    if user_id != ALLOWED_USER_ID:
+    if not is_user_allowed(user_id):
         await update.message.reply_text("⛔ Unauthorized access denied.")
         return
     
@@ -278,7 +278,7 @@ async def checkbalances_command(update: Update, context: ContextTypes.DEFAULT_TY
     """
     user_id = update.effective_user.id
     
-    if user_id != ALLOWED_USER_ID:
+    if not is_user_allowed(user_id):
         await update.message.reply_text("⛔ Unauthorized access denied.")
         return
     

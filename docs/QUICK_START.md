@@ -1,171 +1,135 @@
-# 🚀 Snatchbase - Quick Start Guide
+# Quick Start Guide
 
-**Version:** 2.0.0 | **Status:** ✅ READY
+Version 2.0.0
 
 ---
 
-## 📋 Fast Commands
+## Starting Services
 
-### Start Backend API
+### Backend API
 ```bash
-cd /workspaces/Snatchbase/backend
+cd backend
 source venv/bin/activate
 python -m launcher.api_service
 ```
-**URL:** http://localhost:8000  
-**API Docs:** http://localhost:8000/docs
 
-### Start Frontend
+**Endpoint:** http://localhost:8000
+**Documentation:** http://localhost:8000/docs
+
+### Frontend
 ```bash
-cd /workspaces/Snatchbase/frontend
+cd frontend
 npm run dev
 ```
-**URL:** http://localhost:5173
 
-### Start Telegram Bot
-```bash
-cd /workspaces/Snatchbase/backend
-source venv/bin/activate
-python run_telegram_bot.py
-```
+**Endpoint:** http://localhost:5173
 
 ### Health Check
 ```bash
-bash /workspaces/Snatchbase/check_health.sh
+bash check_health.sh
 ```
 
-### Database Stats
+### Database Statistics
 ```bash
-cd /workspaces/Snatchbase/backend
+cd backend
 source venv/bin/activate
 python db_stats.py
 ```
 
 ---
 
-## 📚 Documentation Index
+## Documentation Index
 
-| File | Size | Purpose |
-|------|------|---------|
-| **PROJECT_STATUS.md** | 12 KB | Complete status report & health metrics |
-| **PROJECT_STRUCTURE.md** | 13 KB | Architecture & file organization |
-| **INNOVATION_ROADMAP.md** | 13 KB | 20+ feature ideas & implementation plans |
-| **CREDIT_CARD_FEATURE.md** | 8.4 KB | CC feature documentation |
-| **README.md** | - | Project overview |
-
-### Read First
-1. `PROJECT_STATUS.md` - Current state, health score (95/100)
-2. `INNOVATION_ROADMAP.md` - Next steps & feature ideas
-3. `PROJECT_STRUCTURE.md` - How everything is organized
+| Document | Purpose |
+|----------|---------|
+| PROJECT_STATUS.md | System status and health metrics |
+| PROJECT_STRUCTURE.md | Architecture and file organization |
+| INNOVATION_ROADMAP.md | Feature planning and implementation guides |
+| CREDIT_CARD_FEATURE.md | Credit card feature documentation |
+| README.md | Project overview and installation |
 
 ---
 
-## 🎯 Current Status
+## Current Capabilities
 
-### ✅ What's Working
-- Backend API (running on port 8000)
-- Database (9 tables, ready for data)
-- All 27 API endpoints
-- Credit card feature fully integrated
-- Telegram bot ready
-- Frontend ready to start
+### Operational
+- Backend API (27 endpoints across 6 routers)
+- PostgreSQL database (9 tables)
+- Credit card parsing and storage
+- Cryptocurrency wallet tracking
+- Browser history extraction
+- Device metadata collection
+- Credential search and filtering
+- Telegram bot integration
 
-### ⏳ What to Do Next
-1. Start frontend: `cd frontend && npm run dev`
-2. Upload stealer logs to test
-3. Implement Quick Wins (2-3 hours):
-   - Enhanced search
-   - Excel export
-   - Duplicate detection
-
----
-
-## 🔥 Quick Wins (Implement Today!)
-
-### 1. Enhanced Search (2 hours)
-Add full-text search with SQLite FTS5
-
-### 2. Excel Export (1 hour)
-Download data as .xlsx files
-
-### 3. Statistics Cache (1 hour)
-Faster dashboard loading
-
-### 4. Duplicate Detection (3 hours)
-Find duplicate credentials
-
-### 5. Batch Operations (2 hours)
-Bulk delete/export actions
-
-**Total time:** 9 hours for all 5 features!
+### Requires Setup
+- Frontend deployment (use `npm run dev`)
+- Data ingestion (place archives in uploads directory)
+- Password list configuration for encrypted archives
 
 ---
 
-## 🚀 High-Priority Features
+## Database Management
 
-### This Week
-1. **Alert System** (1 week) - Push notifications for high-value finds
-2. **OSINT Integration** (2 weeks) - Enrich data with breach history
-
-### This Month
-1. **AI Pattern Recognition** (3 weeks) - Detect password reuse
-2. **Credential Validation** (2 weeks) - Test if credentials work
-3. **Distributed Processing** (3 weeks) - 10x faster ZIP processing
-
----
-
-## 📊 Key Metrics
-
-- **Files Indexed:** 90+ (54 Python, 20 TypeScript)
-- **API Endpoints:** 27 across 6 routers
-- **Database Tables:** 9 models
-- **Services:** 23 backend modules
-- **Telegram Commands:** 15+
-- **Frontend Pages:** 7
-- **Health Score:** 95/100
-
----
-
-## 🎨 Feature Status
-
-| Feature | Frontend | Backend | Telegram | Database |
-|---------|----------|---------|----------|----------|
-| Credentials | ✅ | ✅ | ✅ | ✅ |
-| Devices | ✅ | ✅ | ✅ | ✅ |
-| Wallets | ✅ | ✅ | ✅ | ✅ |
-| Credit Cards | ✅ | ✅ | ✅ | ✅ |
-| Files | ✅ | ✅ | ✅ | ✅ |
-| Analytics | ✅ | ✅ | ✅ | ✅ |
-
----
-
-## 💡 Innovation Highlights
-
-See `INNOVATION_ROADMAP.md` for details on:
-
-- **Phase 1:** AI & Automation (Pattern Recognition, OSINT, Alerts)
-- **Phase 2:** Security (Encryption, Validation)
-- **Phase 3:** Analytics (Dashboards, Predictions)
-- **Phase 4:** Integration (Marketplace, Cloud)
-- **Phase 5:** Performance (Distributed, GraphQL)
-- **Phase 6:** UX (Dark Mode, Mobile App)
-- **Phase 7:** Developer Tools (SDKs, Webhooks)
-
----
-
-## 🔧 Troubleshooting
-
-### Backend not responding?
+### View Tables
 ```bash
-# Check if running
+psql -d snatchbase -c "\dt"
+```
+
+### Reset Database (Warning: Deletes All Data)
+```bash
+cd backend
+source venv/bin/activate
+python reset_database.py
+```
+
+### Manual Data Ingestion
+```bash
+cd backend
+source venv/bin/activate
+python manual_ingest.py
+```
+
+Place ZIP or RAR files in `backend/data/incoming/uploads/` before running.
+
+---
+
+## API Endpoints
+
+### Statistics
+```bash
+curl http://localhost:8000/api/stats
+curl http://localhost:8000/api/stats/browsers?limit=20
+curl http://localhost:8000/api/stats/credit-cards
+```
+
+### Search
+```bash
+curl "http://localhost:8000/api/search/credentials?q=gmail&limit=50"
+```
+
+### Devices
+```bash
+curl http://localhost:8000/api/devices?limit=20
+curl http://localhost:8000/api/devices/1
+```
+
+---
+
+## Troubleshooting
+
+### Backend Not Responding
+```bash
+# Check if process is running
 ps aux | grep "python -m launcher"
 
-# Restart
-cd backend && source venv/bin/activate
+# Restart service
+cd backend
+source venv/bin/activate
 python -m launcher.api_service
 ```
 
-### Frontend build errors?
+### Frontend Build Errors
 ```bash
 # Reinstall dependencies
 cd frontend
@@ -173,26 +137,88 @@ rm -rf node_modules package-lock.json
 npm install
 ```
 
-### Database issues?
-```bash
-# Check tables
-sqlite3 backend/snatchbase.db ".tables"
+### Database Connection Issues
+Check database configuration in `backend/.env`:
+```
+DATABASE_URL=postgresql://user:password@localhost/snatchbase
+```
 
-# Recreate database
-rm backend/snatchbase.db
-cd backend && python -c "from app.database import Base, engine; Base.metadata.create_all(engine)"
+Verify PostgreSQL is running:
+```bash
+systemctl status postgresql
 ```
 
 ---
 
-## 📞 Resources
+## Configuration Files
 
-- **API Documentation:** http://localhost:8000/docs
-- **Frontend Dev:** http://localhost:5173
-- **Database:** `/workspaces/Snatchbase/backend/snatchbase.db`
-- **Logs:** Check terminal output
+### Archive Passwords
+Edit `backend/passwords.txt` to add passwords for encrypted archives:
+```
+# One password per line
+# Lines starting with # are comments
+password1
+password2
+https://t.me/ChannelName
+```
+
+### Environment Variables
+Edit `backend/.env`:
+```
+DATABASE_URL=postgresql://user:password@localhost/snatchbase
+SECRET_KEY=your-secret-key
+DEBUG=false
+```
 
 ---
 
-**Last Updated:** November 3, 2025  
-**Status:** ✅ ALL SYSTEMS OPERATIONAL
+## Performance Optimization
+
+### RAR Archive Processing
+RAR files are automatically extracted to temporary directories for optimal performance. This avoids repeated external process calls during file-by-file extraction.
+
+### Database Indexing
+Tables are indexed on frequently queried fields. For large datasets, consider additional composite indexes based on query patterns.
+
+### Search Performance
+Use specific filters (domain, stealer_name, browser) to narrow result sets before applying general text search.
+
+---
+
+## Development Workflow
+
+### Adding API Endpoints
+1. Create router in `backend/app/routers/`
+2. Define data models in `backend/app/models.py`
+3. Implement business logic in `backend/app/services/`
+4. Register router in `backend/app/main.py`
+5. Update frontend API client in `frontend/src/services/api.ts`
+
+### Adding UI Components
+1. Create component in `frontend/src/components/`
+2. Add page in `frontend/src/pages/`
+3. Update routing in `frontend/src/App.tsx`
+4. Add TypeScript interfaces in `frontend/src/services/api.ts`
+
+---
+
+## System Requirements
+
+- Python 3.10+
+- Node.js 18+
+- PostgreSQL 12+
+- 4GB RAM minimum (8GB recommended for large datasets)
+- 10GB disk space minimum (scales with data volume)
+
+---
+
+## Resources
+
+- API Documentation: http://localhost:8000/docs
+- Frontend Development: http://localhost:5173
+- Database: PostgreSQL connection via DATABASE_URL
+- Logs: Terminal output from respective services
+
+---
+
+Last Updated: 2025-11-27

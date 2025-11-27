@@ -5,7 +5,7 @@ Modular architecture for better maintainability
 """
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackQueryHandler
 from telegram import Update
-from .config import logger, TELEGRAM_BOT_TOKEN, ALLOWED_USER_ID, UPLOAD_DIR
+from .config import logger, TELEGRAM_BOT_TOKEN, ALLOWED_USER_IDS, ALLOW_ALL_USERS, UPLOAD_DIR
 from .commands import start_command, status_command, top100_command, creditcards_command, ccstats_command
 from .extractdomains import extractdomains_command
 from .handlers import handle_document, handle_message
@@ -21,12 +21,15 @@ def main():
         logger.error("TELEGRAM_BOT_TOKEN environment variable not set!")
         return
     
-    if not ALLOWED_USER_ID:
-        logger.error("TELEGRAM_ALLOWED_USER_ID environment variable not set!")
+    if not ALLOWED_USER_IDS and not ALLOW_ALL_USERS:
+        logger.error("TELEGRAM_ALLOWED_USER_ID environment variable not set or invalid! Set to integer(s) or '*'")
         return
     
     logger.info(f"Starting Telegram bot...")
-    logger.info(f"Authorized user ID: {ALLOWED_USER_ID}")
+    if ALLOW_ALL_USERS:
+        logger.info("Authorized user ID: ALL (*)")
+    else:
+        logger.info(f"Authorized user IDs: {ALLOWED_USER_IDS}")
     logger.info(f"Upload directory: {UPLOAD_DIR}")
     
     # Create application

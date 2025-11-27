@@ -24,6 +24,49 @@ from app.services.cc_integration import process_credit_cards_for_device
 from app.services.archive_handler import SmartArchiveHandler
 
 
+class FileEntryWrapper:
+    """Mimics zipfile.ZipInfo for extracted files"""
+    def __init__(self, filepath: Path, base_path: Path):
+        self.filename = str(filepath.relative_to(base_path))
+        self.is_dir = lambda: filepath.is_dir()
+        self.file_size = filepath.stat().st_size if filepath.is_file() else 0
+
+
+class ExtractedDirWrapper:
+    """Wraps an extracted directory to mimic ZipFile interface for RAR performance"""
+    def __init__(self, base_path: Path):
+        self.base_path = base_path
+        # Build file list similar to ZipFile.filelist
+        self.filelist = []
+        for filepath in base_path.rglob('*'):
+            self.filelist.append(FileEntryWrapper(filepath, base_path))
+
+    def namelist(self):
+        """Return list of filenames like ZipFile"""
+        return [entry.filename for entry in self.filelist]
+
+    def read(self, name_or_info):
+        """Read file contents like ZipFile.read()"""
+        if hasattr(name_or_info, 'filename'):
+            filepath = self.base_path / name_or_info.filename
+        else:
+            filepath = self.base_path / name_or_info
+        with open(filepath, 'rb') as f:
+            return f.read()
+
+    def open(self, name_or_info, mode='r', pwd=None):
+        """Open file like ZipFile.open()"""
+        if hasattr(name_or_info, 'filename'):
+            filepath = self.base_path / name_or_info.filename
+        else:
+            filepath = self.base_path / name_or_info
+        return open(filepath, 'rb')
+
+    def close(self):
+        """No-op for compatibility"""
+        pass
+
+
 def sanitize_text(text: Optional[str], max_length: Optional[int] = None) -> Optional[str]:
     """Remove NULL bytes and other problematic characters from text"""
     if not text:
@@ -109,13 +152,38 @@ class ZipIngestionService:
         db.commit()
         
         try:
-            # Open ZIP file (with password support)
+            # Open archive file (with password support)
             archive, password = self.archive_handler.open_archive(zip_path)
             if password:
                 self.logger.info(f"🔓 Archive opened with password: {password}")
 
-            # Use the archive as zip_file
-            zip_file = archive
+            # For RAR files, extract to temp directory first for optimal performance
+            # Reading files one-by-one from RAR is 1000x slower due to external process calls
+            import tempfile
+            import shutil
+            temp_dir = None
+            is_rar = zip_path.suffix.lower() in ['.rar', '.r00', '.r01']
+
+            if is_rar:
+                self.logger.info(f"📦 RAR detected - extracting entire archive to temp dir for optimal performance...")
+                temp_dir = tempfile.mkdtemp(prefix="snatchbase_rar_")
+                try:
+                    # Extract entire RAR to temp dir (much faster than file-by-file reads)
+                    if password:
+                        archive.extractall(temp_dir, pwd=password)
+                    else:
+                        archive.extractall(temp_dir)
+                    self.logger.info(f"✅ RAR extracted to: {temp_dir}")
+                    archive.close()
+                    # Create a file system wrapper that mimics ZipFile interface
+                    zip_file = ExtractedDirWrapper(Path(temp_dir))
+                except Exception as e:
+                    self.logger.error(f"❌ Failed to extract RAR: {e}")
+                    if temp_dir:
+                        shutil.rmtree(temp_dir, ignore_errors=True)
+                    raise
+            else:
+                zip_file = archive
 
             try:
                 # Group files by device
@@ -196,6 +264,10 @@ class ZipIngestionService:
             finally:
                 # Close the archive
                 zip_file.close()
+                # Clean up temp directory if created for RAR
+                if temp_dir and Path(temp_dir).exists():
+                    self.logger.info(f"🧹 Cleaning up temp directory: {temp_dir}")
+                    shutil.rmtree(temp_dir, ignore_errors=True)
 
         except Exception as e:
             self.logger.error(f"❌ Error processing ZIP: {e}", exc_info=True)
@@ -641,7 +713,7 @@ class ZipIngestionService:
         for wallet_data in all_wallets:
             try:
                 wallet = Wallet(
-                    device_id=device.id,  # Use device.id (integer PK) not device_id (string)
+                    device_id=device.device_id,
                     wallet_type=sanitize_text(wallet_data["wallet_type"], max_length=50),
                     address=sanitize_text(wallet_data.get("address"), max_length=255),
                     mnemonic_hash=wallet_data.get("mnemonic_hash"),

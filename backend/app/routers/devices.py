@@ -10,7 +10,7 @@ from typing import Optional
 from app.database import get_db
 from app.services.search_service import SearchService
 from app.schemas import CredentialResponse
-from app.models import Device, Credential, File, Software, Wallet
+from app.models import Device, Credential, File, Software, Wallet, CreditCard, BrowserHistory
 
 router = APIRouter()
 search_service = SearchService()
@@ -58,7 +58,21 @@ async def get_device(device_id: int, db: Session = Depends(get_db)):
     device = db.query(Device).filter(Device.id == device_id).first()
     if not device:
         raise HTTPException(status_code=404, detail="Device not found")
-    
+
+    # Compute additional counts
+    total_wallets = db.query(func.count(Wallet.id)).filter(Wallet.device_id == device.device_id).scalar() or 0
+    total_credit_cards = db.query(func.count(CreditCard.id)).filter(CreditCard.device_id == device.device_id).scalar() or 0
+    total_cookies = db.query(func.count(File.id)).filter(
+        File.device_id == device.device_id,
+        File.file_name.ilike('%cookie%')
+    ).scalar() or 0
+    total_screenshots = db.query(func.count(File.id)).filter(
+        File.device_id == device.device_id,
+        File.file_path.ilike('%screenshot%')
+    ).scalar() or 0
+    total_software = db.query(func.count(Software.id)).filter(Software.device_id == device.device_id).scalar() or 0
+    total_history = db.query(func.count(BrowserHistory.id)).filter(BrowserHistory.device_id == device.device_id).scalar() or 0
+
     return {
         "id": device.id,
         "device_id": device.device_id,
@@ -77,6 +91,12 @@ async def get_device(device_id: int, db: Session = Depends(get_db)):
         "total_credentials": device.total_credentials,
         "total_domains": device.total_domains,
         "total_urls": device.total_urls,
+        "total_wallets": total_wallets,
+        "total_credit_cards": total_credit_cards,
+        "total_cookies": total_cookies,
+        "total_screenshots": total_screenshots,
+        "total_software": total_software,
+        "total_history": total_history,
         "upload_date": device.upload_date,
         "created_at": device.created_at,
     }
@@ -223,3 +243,81 @@ async def get_device_password_stats(
             for ps in password_stats
         ]
     }
+
+
+@router.get("/devices/{device_id}/history")
+async def get_device_history(
+    device_id: int,
+    limit: int = Query(default=100, ge=1, le=1000, description="Number of results to return (max 1000)"),
+    offset: int = Query(default=0, ge=0, description="Number of results to skip"),
+    browser: Optional[str] = Query(default=None, description="Filter by browser"),
+    db: Session = Depends(get_db)
+):
+    """Get browser history for a specific device by numeric ID"""
+    # Check if device exists and get its device_id string
+    device = db.query(Device).filter(Device.id == device_id).first()
+    if not device:
+        raise HTTPException(status_code=404, detail="Device not found")
+
+    # Build query
+    query = db.query(BrowserHistory).filter(BrowserHistory.device_id == device.device_id)
+
+    # Filter by browser if specified
+    if browser:
+        query = query.filter(BrowserHistory.browser == browser)
+
+    # Get total count
+    total = query.count()
+
+    # Get history entries ordered by last visit time (most recent first)
+    history = query.order_by(BrowserHistory.created_at.desc()).offset(offset).limit(limit).all()
+
+    return {
+        "results": [
+            {
+                "id": h.id,
+                "url": h.url,
+                "title": h.title,
+                "visit_count": h.visit_count,
+                "last_visit_time": h.last_visit_time,
+                "browser": h.browser,
+                "source_file": h.source_file,
+                "created_at": h.created_at,
+            }
+            for h in history
+        ],
+        "total": total,
+        "limit": limit,
+        "offset": offset
+    }
+
+
+@router.get("/devices/{device_id}/cookies")
+async def get_device_cookies(
+    device_id: int,
+    limit: int = Query(default=100, ge=1, le=1000, description="Number of results to return (max 1000)"),
+    db: Session = Depends(get_db)
+):
+    """Get cookie files for a specific device by numeric ID"""
+    # Check if device exists and get its device_id string
+    device = db.query(Device).filter(Device.id == device_id).first()
+    if not device:
+        raise HTTPException(status_code=404, detail="Device not found")
+
+    # Get cookie files (files with 'cookie' in the name)
+    cookie_files = db.query(File).filter(
+        File.device_id == device.device_id,
+        File.file_name.ilike('%cookie%')
+    ).limit(limit).all()
+
+    return [
+        {
+            "id": f.id,
+            "file_name": f.file_name,
+            "file_path": f.file_path,
+            "file_size": f.file_size,
+            "cookie_count": 0,  # Could parse actual cookie count if needed
+            "service": "Unknown"  # Could parse browser/service from path
+        }
+        for f in cookie_files
+    ]

@@ -6,7 +6,7 @@ from telegram import Update
 from telegram.ext import ContextTypes
 from app.database import SessionLocal
 from app.services.zip_ingestion import ZipIngestionService
-from .config import logger, ALLOWED_USER_ID, UPLOAD_DIR
+from .config import logger, is_user_allowed, UPLOAD_DIR
 from .utils import get_back_button
 from .mega_download import download_mega_file
 
@@ -16,7 +16,7 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     
     # Check authorization
-    if user_id != ALLOWED_USER_ID:
+    if not is_user_allowed(user_id):
         await update.message.reply_text("⛔ Unauthorized access denied.")
         logger.warning(f"Unauthorized file upload attempt from user {user_id}")
         return

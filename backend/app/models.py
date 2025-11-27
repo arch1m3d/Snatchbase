@@ -35,6 +35,7 @@ class Device(Base):
     password_stats = relationship("PasswordStat", back_populates="device", cascade="all, delete-orphan")
     software = relationship("Software", back_populates="device", cascade="all, delete-orphan")
     wallets = relationship("Wallet", back_populates="device", cascade="all, delete-orphan")
+    browser_history = relationship("BrowserHistory", back_populates="device", cascade="all, delete-orphan")
     
     # Indexes
     __table_args__ = (
@@ -213,7 +214,7 @@ class Wallet(Base):
 class CreditCard(Base):
     """Credit Card model - stores credit card information from stealer logs"""
     __tablename__ = "credit_cards"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     device_id = Column(String(500), ForeignKey('devices.device_id'), nullable=False, index=True)
     card_number = Column(String(20), index=True)  # Card number (consider masking last 4)
@@ -223,13 +224,39 @@ class CreditCard(Base):
     card_brand = Column(String(50), index=True)  # Visa, Mastercard, Amex, etc.
     source_file = Column(Text)  # Path to the CC file
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    
+
     # Relationship
     device = relationship("Device", foreign_keys=[device_id])
-    
+
     # Indexes
     __table_args__ = (
         Index('idx_cc_device_id', 'device_id'),
         Index('idx_cc_brand', 'card_brand'),
         Index('idx_cc_created_at', 'created_at'),
+    )
+
+
+class BrowserHistory(Base):
+    """Browser History model - stores browser history entries from stealer logs"""
+    __tablename__ = "browser_history"
+
+    id = Column(Integer, primary_key=True, index=True)
+    device_id = Column(String(500), ForeignKey('devices.device_id', ondelete='CASCADE'), nullable=False, index=True)
+    url = Column(Text, nullable=False)
+    title = Column(Text)
+    visit_count = Column(Integer, default=1)
+    last_visit_time = Column(String(100))  # Timestamp from browser history
+    browser = Column(String(200), index=True)  # Chrome, Firefox, Edge, etc.
+    source_file = Column(Text)  # Path to the history file
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationship
+    device = relationship("Device", foreign_keys=[device_id])
+
+    # Indexes
+    __table_args__ = (
+        Index('idx_history_device_id', 'device_id'),
+        Index('idx_history_browser', 'browser'),
+        Index('idx_history_created_at', 'created_at'),
+        Index('idx_history_url', 'url', postgresql_ops={'url': 'text_pattern_ops'}),
     )

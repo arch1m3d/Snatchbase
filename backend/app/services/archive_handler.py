@@ -10,6 +10,13 @@ import logging
 
 try:
     import rarfile
+    # Configure rarfile to use unar on macOS (or unrar if available)
+    import shutil
+    if shutil.which("unar"):
+        rarfile.UNRAR_TOOL = "unar"
+    elif not shutil.which("unrar"):
+        # If neither unar nor unrar is found, rarfile won't work
+        pass
     RARFILE_AVAILABLE = True
 except ImportError:
     RARFILE_AVAILABLE = False
