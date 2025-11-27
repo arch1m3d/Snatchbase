@@ -172,6 +172,7 @@ export interface Device {
   total_cookies: number
   total_screenshots: number
   total_software: number
+  total_history: number
   created_at: string
 }
 
