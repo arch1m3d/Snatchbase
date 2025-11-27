@@ -6,7 +6,7 @@ from telegram.ext import ContextTypes
 from sqlalchemy import func
 from app.database import SessionLocal
 from app.models import Credential, Device, Upload
-from .config import logger, ALLOWED_USER_ID, UPLOAD_DIR
+from .config import logger, is_user_allowed, UPLOAD_DIR
 
 
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -18,7 +18,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Show main menu by editing the message
         user_id = query.from_user.id
         
-        if user_id != ALLOWED_USER_ID:
+        if not is_user_allowed(user_id):
             await query.edit_message_text("⛔ Unauthorized access denied.")
             return
         

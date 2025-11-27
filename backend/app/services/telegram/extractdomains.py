@@ -8,7 +8,7 @@ import tempfile
 import os
 from app.database import SessionLocal
 from app.models import Credential
-from .config import logger, ALLOWED_USER_ID
+from .config import logger, is_user_allowed
 from .utils import get_back_button
 
 
@@ -104,7 +104,7 @@ async def extractdomains_command(update: Update, context: ContextTypes.DEFAULT_T
     """Handle /extractdomains command to extract credentials from specific domains"""
     user_id = update.effective_user.id
     
-    if user_id != ALLOWED_USER_ID:
+    if not is_user_allowed(user_id):
         await update.message.reply_text("⛔ Unauthorized access denied.")
         return
     
