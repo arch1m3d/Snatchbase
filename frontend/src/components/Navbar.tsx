@@ -1,15 +1,16 @@
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { 
-  Search, 
-  BarChart3, 
-  Database, 
-  Menu, 
+import {
+  Search,
+  BarChart3,
+  Database,
+  Menu,
   X,
   Shield,
   Server,
-  CreditCard
+  CreditCard,
+  Wallet
 } from 'lucide-react'
 
 const navigation = [
@@ -17,6 +18,7 @@ const navigation = [
   { name: 'Search', href: '/search', icon: Search },
   { name: 'Devices', href: '/devices', icon: Server },
   { name: 'Credit Cards', href: '/creditcards', icon: CreditCard },
+  { name: 'Wallets', href: '/wallets', icon: Wallet },
   { name: 'Analytics', href: '/analytics', icon: BarChart3 },
   { name: 'API', href: '/api', icon: Shield },
 ]

