@@ -403,4 +403,24 @@ export const fetchDeviceCookies = async (
   return response.data
 }
 
+// Browser History API Functions
+export interface BrowserHistoryEntry {
+  id: number
+  url: string
+  title?: string
+  visit_count: number
+  last_visit_time?: string
+  browser: string
+  source_file?: string
+  created_at: string
+}
+
+export const fetchDeviceHistory = async (
+  deviceId: number,
+  params?: { limit?: number; offset?: number; browser?: string }
+): Promise<SearchResponse<BrowserHistoryEntry>> => {
+  const response = await api.get(`/api/devices/${deviceId}/history`, { params })
+  return response.data
+}
+
 export default api

@@ -44,16 +44,19 @@ import {
 import CredentialCard from '@/components/CredentialCard';
 import CreditCardList from '@/components/CreditCardList';
 import DeviceCookiesList from '@/components/DeviceCookiesList';
+import DeviceHistoryList from '@/components/DeviceHistoryList';
 import DeviceSoftwareList from '@/components/DeviceSoftwareList';
 import ScreenshotGallery from '@/components/ScreenshotGallery';
 import WalletList from '@/components/WalletList';
 import {
+  BrowserHistoryEntry,
   CookieFile,
   fetchDevice,
   fetchDeviceCookies,
   fetchDeviceCredentials,
   fetchDeviceCreditCards,
   fetchDeviceFiles,
+  fetchDeviceHistory,
   fetchDeviceSoftware,
   fetchDeviceWallets,
   fetchFileContent,
@@ -84,10 +87,11 @@ interface Device {
   total_cookies: number
   total_screenshots: number
   total_software: number
+  total_history: number
   created_at: string
 }
 
-type TabType = 'overview' | 'credentials' | 'creditcards' | 'wallets' | 'cookies' | 'software' | 'files' | 'screenshots'
+type TabType = 'overview' | 'credentials' | 'creditcards' | 'wallets' | 'cookies' | 'history' | 'software' | 'files' | 'screenshots'
 
 export default function DeviceDetail() {
   const { deviceId } = useParams<{ deviceId: string }>()
@@ -98,6 +102,7 @@ export default function DeviceDetail() {
   const [creditCards, setCreditCards] = useState<any[]>([])
   const [wallets, setWallets] = useState<Wallet[]>([])
   const [cookies, setCookies] = useState<CookieFile[]>([])
+  const [history, setHistory] = useState<BrowserHistoryEntry[]>([])
   const [software, setSoftware] = useState<Software[]>([])
   const [files, setFiles] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -107,6 +112,7 @@ export default function DeviceDetail() {
   const [totalCards, setTotalCards] = useState(0)
   const [totalWallets, setTotalWallets] = useState(0)
   const [totalSoftware, setTotalSoftware] = useState(0)
+  const [totalHistory, setTotalHistory] = useState(0)
   const [searchQuery, setSearchQuery] = useState('')
   const [activeTab, setActiveTab] = useState<TabType>('overview')
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set())
@@ -116,6 +122,7 @@ export default function DeviceDetail() {
   const [cardsLoaded, setCardsLoaded] = useState(false)
   const [walletsLoaded, setWalletsLoaded] = useState(false)
   const [cookiesLoaded, setCookiesLoaded] = useState(false)
+  const [historyLoaded, setHistoryLoaded] = useState(false)
   const [softwareLoaded, setSoftwareLoaded] = useState(false)
 
   useEffect(() => {
@@ -134,6 +141,7 @@ export default function DeviceDetail() {
       setCardsLoaded(false)
       setWalletsLoaded(false)
       setCookiesLoaded(false)
+      setHistoryLoaded(false)
       setSoftwareLoaded(false)
 
       // Only load device metadata and initial credentials - lazy load other tabs
@@ -197,6 +205,21 @@ export default function DeviceDetail() {
     }
   }
 
+  // Lazy load browser history when tab is clicked
+  const loadHistory = async () => {
+    if (!deviceIdNum || historyLoaded) return
+
+    try {
+      const historyData = await fetchDeviceHistory(deviceIdNum, { limit: 500, offset: 0 })
+      setHistory(historyData.results)
+      setTotalHistory(historyData.total)
+      setHistoryLoaded(true)
+    } catch (error) {
+      console.error('Failed to load history:', error)
+      toast.error('Failed to load browser history')
+    }
+  }
+
   // Lazy load software when tab is clicked
   const loadSoftware = async () => {
     if (!deviceIdNum || softwareLoaded) return
@@ -234,6 +257,8 @@ export default function DeviceDetail() {
       loadWallets()
     } else if (activeTab === 'cookies') {
       loadCookies()
+    } else if (activeTab === 'history') {
+      loadHistory()
     } else if (activeTab === 'software') {
       loadSoftware()
     } else if (activeTab === 'files' || activeTab === 'screenshots') {
@@ -545,8 +570,8 @@ export default function DeviceDetail() {
           </div>
 
           {/* Stats Grid */}
-          <div className="flex flex-wrap justify-center gap-4">
-            <div className="p-4 bg-dark-700/30 rounded-xl min-w-[160px] flex-1 max-w-[240px]">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+            <div className="p-4 bg-dark-700/30 rounded-xl">
               <div className="flex items-center gap-2 mb-2">
                 <Key className="h-5 w-5 text-blue-400" />
                 <span className="text-sm text-dark-400">Credentials</span>
@@ -554,7 +579,7 @@ export default function DeviceDetail() {
               <p className="text-3xl font-bold text-white">{device.total_credentials.toLocaleString()}</p>
             </div>
 
-            <div className="p-4 bg-dark-700/30 rounded-xl min-w-[160px] flex-1 max-w-[240px]">
+            <div className="p-4 bg-dark-700/30 rounded-xl">
               <div className="flex items-center gap-2 mb-2">
                 <Globe className="h-5 w-5 text-green-400" />
                 <span className="text-sm text-dark-400">Domains</span>
@@ -562,7 +587,7 @@ export default function DeviceDetail() {
               <p className="text-3xl font-bold text-white">{device.total_domains.toLocaleString()}</p>
             </div>
 
-            <div className="p-4 bg-dark-700/30 rounded-xl min-w-[160px] flex-1 max-w-[240px]">
+            <div className="p-4 bg-dark-700/30 rounded-xl">
               <div className="flex items-center gap-2 mb-2">
                 <Globe className="h-5 w-5 text-purple-400" />
                 <span className="text-sm text-dark-400">URLs</span>
@@ -570,7 +595,7 @@ export default function DeviceDetail() {
               <p className="text-3xl font-bold text-white">{device.total_urls.toLocaleString()}</p>
             </div>
 
-            <div className="p-4 bg-dark-700/30 rounded-xl min-w-[160px] flex-1 max-w-[240px]">
+            <div className="p-4 bg-dark-700/30 rounded-xl">
               <div className="flex items-center gap-2 mb-2">
                 <Database className="h-5 w-5 text-orange-400" />
                 <span className="text-sm text-dark-400">Files</span>
@@ -579,7 +604,7 @@ export default function DeviceDetail() {
             </div>
 
             {device.total_wallets > 0 && (
-              <div className="p-4 bg-dark-700/30 rounded-xl min-w-[160px] flex-1 max-w-[240px]">
+              <div className="p-4 bg-dark-700/30 rounded-xl">
                 <div className="flex items-center gap-2 mb-2">
                   <WalletIcon className="h-5 w-5 text-yellow-400" />
                   <span className="text-sm text-dark-400">Wallets</span>
@@ -589,12 +614,22 @@ export default function DeviceDetail() {
             )}
 
             {device.total_cookies > 0 && (
-              <div className="p-4 bg-dark-700/30 rounded-xl min-w-[160px] flex-1 max-w-[240px]">
+              <div className="p-4 bg-dark-700/30 rounded-xl">
                 <div className="flex items-center gap-2 mb-2">
                   <Cookie className="h-5 w-5 text-amber-600" />
                   <span className="text-sm text-dark-400">Cookies</span>
                 </div>
                 <p className="text-3xl font-bold text-white">{device.total_cookies.toLocaleString()}</p>
+              </div>
+            )}
+
+            {device.total_screenshots > 0 && (
+              <div className="p-4 bg-dark-700/30 rounded-xl">
+                <div className="flex items-center gap-2 mb-2">
+                  <ImageIcon className="h-5 w-5 text-pink-400" />
+                  <span className="text-sm text-dark-400">Screenshots</span>
+                </div>
+                <p className="text-3xl font-bold text-white">{device.total_screenshots.toLocaleString()}</p>
               </div>
             )}
           </div>
@@ -647,23 +682,25 @@ export default function DeviceDetail() {
             )}
           </button>
 
-          <button
-            onClick={() => setActiveTab('creditcards')}
-            className={`px-6 py-3 font-medium transition-all relative whitespace-nowrap ${
-              activeTab === 'creditcards'
-                ? 'text-primary-400'
-                : 'text-dark-400 hover:text-white'
-            }`}
-          >
-            <CreditCardIcon className="h-4 w-4 inline mr-2" />
-            Cards ({cardsLoaded ? totalCards : '?'})
-            {activeTab === 'creditcards' && (
-              <motion.div
-                layoutId="activeTab"
-                className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-400"
-              />
-            )}
-          </button>
+          {(!cardsLoaded || totalCards > 0) && (
+            <button
+              onClick={() => setActiveTab('creditcards')}
+              className={`px-6 py-3 font-medium transition-all relative whitespace-nowrap ${
+                activeTab === 'creditcards'
+                  ? 'text-primary-400'
+                  : 'text-dark-400 hover:text-white'
+              }`}
+            >
+              <CreditCardIcon className="h-4 w-4 inline mr-2" />
+              Cards ({cardsLoaded ? totalCards : '...'})
+              {activeTab === 'creditcards' && (
+                <motion.div
+                  layoutId="activeTab"
+                  className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-400"
+                />
+              )}
+            </button>
+          )}
 
           {device.total_wallets > 0 && (
             <button
@@ -705,41 +742,65 @@ export default function DeviceDetail() {
             </button>
           )}
 
-          <button
-            onClick={() => setActiveTab('software')}
-            className={`px-6 py-3 font-medium transition-all relative whitespace-nowrap ${
-              activeTab === 'software'
-                ? 'text-primary-400'
-                : 'text-dark-400 hover:text-white'
-            }`}
-          >
-            <Package className="h-4 w-4 inline mr-2" />
-            Software ({softwareLoaded ? totalSoftware : device.total_software || '?'})
-            {activeTab === 'software' && (
-              <motion.div
-                layoutId="activeTab"
-                className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-400"
-              />
-            )}
-          </button>
+          {device.total_history > 0 && (
+            <button
+              onClick={() => setActiveTab('history')}
+              className={`px-6 py-3 font-medium transition-all relative whitespace-nowrap ${
+                activeTab === 'history'
+                  ? 'text-primary-400'
+                  : 'text-dark-400 hover:text-white'
+              }`}
+            >
+              <Activity className="h-4 w-4 inline mr-2" />
+              History ({historyLoaded ? totalHistory : device.total_history})
+              {activeTab === 'history' && (
+                <motion.div
+                  layoutId="activeTab"
+                  className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-400"
+                />
+              )}
+            </button>
+          )}
 
-          <button
-            onClick={() => setActiveTab('files')}
-            className={`px-6 py-3 font-medium transition-all relative whitespace-nowrap ${
-              activeTab === 'files'
-                ? 'text-primary-400'
-                : 'text-dark-400 hover:text-white'
-            }`}
-          >
-            <Folder className="h-4 w-4 inline mr-2" />
-            Files ({filesLoaded ? files.length : device.total_files})
-            {activeTab === 'files' && (
-              <motion.div
-                layoutId="activeTab"
-                className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-400"
-              />
-            )}
-          </button>
+          {(device.total_software > 0 || (!softwareLoaded || totalSoftware > 0)) && (
+            <button
+              onClick={() => setActiveTab('software')}
+              className={`px-6 py-3 font-medium transition-all relative whitespace-nowrap ${
+                activeTab === 'software'
+                  ? 'text-primary-400'
+                  : 'text-dark-400 hover:text-white'
+              }`}
+            >
+              <Package className="h-4 w-4 inline mr-2" />
+              Software ({softwareLoaded ? totalSoftware : device.total_software || 0})
+              {activeTab === 'software' && (
+                <motion.div
+                  layoutId="activeTab"
+                  className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-400"
+                />
+              )}
+            </button>
+          )}
+
+          {device.total_files > 0 && (
+            <button
+              onClick={() => setActiveTab('files')}
+              className={`px-6 py-3 font-medium transition-all relative whitespace-nowrap ${
+                activeTab === 'files'
+                  ? 'text-primary-400'
+                  : 'text-dark-400 hover:text-white'
+              }`}
+            >
+              <Folder className="h-4 w-4 inline mr-2" />
+              Files ({filesLoaded ? files.length : device.total_files})
+              {activeTab === 'files' && (
+                <motion.div
+                  layoutId="activeTab"
+                  className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-400"
+                />
+              )}
+            </button>
+          )}
 
           {device.total_screenshots > 0 && (
             <button
@@ -1037,6 +1098,15 @@ export default function DeviceDetail() {
             exit={{ opacity: 0, x: 20 }}
           >
             <DeviceCookiesList cookies={cookies} isLoading={!cookiesLoaded} />
+          </motion.div>
+        ) : activeTab === 'history' ? (
+          <motion.div
+            key="history"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 20 }}
+          >
+            <DeviceHistoryList history={history} isLoading={!historyLoaded} />
           </motion.div>
         ) : activeTab === 'software' ? (
           <motion.div
