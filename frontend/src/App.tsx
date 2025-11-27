@@ -10,6 +10,7 @@ import AnalyticsNew from './pages/AnalyticsNew'
 import ApiDocs from './pages/ApiDocs'
 import TopDomainsPage from './pages/TopDomainsPage'
 import CreditCardsPage from './pages/CreditCardsPage'
+import WalletsPage from './pages/WalletsPage'
 
 function App() {
   return (
@@ -53,6 +54,7 @@ function App() {
             <Route path="/device/:deviceId" element={<DeviceDetail />} />
             <Route path="/analytics" element={<AnalyticsNew />} />
             <Route path="/creditcards" element={<CreditCardsPage />} />
+            <Route path="/wallets" element={<WalletsPage />} />
             <Route path="/topdomains" element={<TopDomainsPage />} />
             <Route path="/api" element={<ApiDocs />} />
           </Routes>
