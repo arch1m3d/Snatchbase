@@ -84,6 +84,7 @@ interface Device {
   total_domains: number
   total_urls: number
   total_wallets: number
+  total_credit_cards: number
   total_cookies: number
   total_screenshots: number
   total_software: number
@@ -682,7 +683,7 @@ export default function DeviceDetail() {
             )}
           </button>
 
-          {(!cardsLoaded || totalCards > 0) && (
+          {device.total_credit_cards > 0 && (
             <button
               onClick={() => setActiveTab('creditcards')}
               className={`px-6 py-3 font-medium transition-all relative whitespace-nowrap ${
@@ -692,7 +693,7 @@ export default function DeviceDetail() {
               }`}
             >
               <CreditCardIcon className="h-4 w-4 inline mr-2" />
-              Cards ({cardsLoaded ? totalCards : '...'})
+              Cards ({cardsLoaded ? totalCards : device.total_credit_cards})
               {activeTab === 'creditcards' && (
                 <motion.div
                   layoutId="activeTab"
@@ -762,7 +763,7 @@ export default function DeviceDetail() {
             </button>
           )}
 
-          {(device.total_software > 0 || (!softwareLoaded || totalSoftware > 0)) && (
+          {device.total_software > 0 && (
             <button
               onClick={() => setActiveTab('software')}
               className={`px-6 py-3 font-medium transition-all relative whitespace-nowrap ${
@@ -772,7 +773,7 @@ export default function DeviceDetail() {
               }`}
             >
               <Package className="h-4 w-4 inline mr-2" />
-              Software ({softwareLoaded ? totalSoftware : device.total_software || 0})
+              Software ({softwareLoaded ? totalSoftware : device.total_software})
               {activeTab === 'software' && (
                 <motion.div
                   layoutId="activeTab"

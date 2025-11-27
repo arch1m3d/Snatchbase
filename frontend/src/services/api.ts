@@ -169,6 +169,7 @@ export interface Device {
   total_domains: number
   total_urls: number
   total_wallets: number
+  total_credit_cards: number
   total_cookies: number
   total_screenshots: number
   total_software: number
