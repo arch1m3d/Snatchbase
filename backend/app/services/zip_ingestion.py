@@ -713,7 +713,7 @@ class ZipIngestionService:
         for wallet_data in all_wallets:
             try:
                 wallet = Wallet(
-                    device_id=device.id,  # Use device.id (integer PK) not device_id (string)
+                    device_id=device.device_id,
                     wallet_type=sanitize_text(wallet_data["wallet_type"], max_length=50),
                     address=sanitize_text(wallet_data.get("address"), max_length=255),
                     mnemonic_hash=wallet_data.get("mnemonic_hash"),

@@ -61,7 +61,7 @@ async def get_device(device_id: int, db: Session = Depends(get_db)):
 
     # Compute additional counts
     total_wallets = db.query(func.count(Wallet.id)).filter(Wallet.device_id == device.device_id).scalar() or 0
-    total_credit_cards = db.query(func.count(CreditCard.id)).filter(CreditCard.device_id == device.id).scalar() or 0
+    total_credit_cards = db.query(func.count(CreditCard.id)).filter(CreditCard.device_id == device.device_id).scalar() or 0
     total_cookies = db.query(func.count(File.id)).filter(
         File.device_id == device.device_id,
         File.file_name.ilike('%cookie%')
