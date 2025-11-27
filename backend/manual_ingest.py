@@ -21,27 +21,29 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 def main():
-    """Manually ingest all ZIP files in uploads directory"""
+    """Manually ingest all ZIP and RAR files in uploads directory"""
     uploads_dir = Path(__file__).parent / "data" / "incoming" / "uploads"
 
     if not uploads_dir.exists():
         logger.error(f"❌ Uploads directory not found: {uploads_dir}")
         sys.exit(1)
 
-    # Find all ZIP files
+    # Find all ZIP and RAR files
     zip_files = list(uploads_dir.glob("*.zip"))
+    rar_files = list(uploads_dir.glob("*.rar"))
+    archive_files = zip_files + rar_files
 
-    if not zip_files:
-        logger.info("ℹ️  No ZIP files found in uploads directory")
+    if not archive_files:
+        logger.info("ℹ️  No archive files found in uploads directory")
         return
 
-    logger.info(f"📦 Found {len(zip_files)} ZIP file(s) to process")
+    logger.info(f"📦 Found {len(archive_files)} archive file(s) to process ({len(zip_files)} ZIP, {len(rar_files)} RAR)")
 
     # Create ingestion service
     ingestion_service = ZipIngestionService(logger=logger)
 
-    # Process each ZIP
-    for zip_path in zip_files:
+    # Process each archive
+    for zip_path in archive_files:
         logger.info(f"\n{'='*60}")
         logger.info(f"Processing: {zip_path.name}")
         logger.info(f"{'='*60}")
