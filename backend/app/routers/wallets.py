@@ -18,7 +18,7 @@ search_service = SearchService()
 
 @router.get("/devices/{device_id}/wallets", response_model=List[WalletResponse])
 async def get_device_wallets(
-    device_id: int,
+    device_id: str,
     wallet_type: Optional[str] = None,
     has_balance: Optional[bool] = None,
     db: Session = Depends(get_db)
@@ -129,7 +129,7 @@ async def get_wallet_stats(db: Session = Depends(get_db)):
 @router.post("/wallets/check-balance")
 async def trigger_balance_check(
     wallet_ids: Optional[List[int]] = None,
-    device_id: Optional[int] = None,
+    device_id: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
     """
