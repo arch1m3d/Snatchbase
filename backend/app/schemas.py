@@ -73,13 +73,13 @@ class WalletBase(BaseModel):
 
 class WalletResponse(WalletBase):
     id: int
-    device_id: int
+    device_id: str
     balance: Optional[float] = None
     balance_usd: Optional[float] = None
     has_balance: bool
     last_checked: Optional[datetime] = None
     created_at: datetime
-    
+
     class Config:
         from_attributes = True
 
